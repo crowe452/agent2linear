@@ -1,11 +1,12 @@
 import { Command } from 'commander';
+import { showConfig } from './commands/config/show.js';
 
 const cli = new Command();
 
 cli
   .name('linear-create')
   .description('Command-line tool for creating Linear issues and projects')
-  .version('0.1.0');
+  .version('0.2.0');
 
 // Initiatives commands
 const initiatives = cli.command('initiatives').description('Manage Linear initiatives');
@@ -46,8 +47,8 @@ const config = cli.command('config').description('Manage configuration');
 config
   .command('show')
   .description('Show current configuration')
-  .action(() => {
-    console.log('Config show command - Coming soon in M02');
+  .action(async () => {
+    await showConfig();
   });
 
 export { cli };

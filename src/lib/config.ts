@@ -1,0 +1,155 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+import type { Config, ResolvedConfig } from './types.js';
+
+const GLOBAL_CONFIG_DIR = join(homedir(), '.config', 'linear-create');
+const GLOBAL_CONFIG_FILE = join(GLOBAL_CONFIG_DIR, 'config.json');
+const PROJECT_CONFIG_DIR = '.linear-create';
+const PROJECT_CONFIG_FILE = join(PROJECT_CONFIG_DIR, 'config.json');
+
+/**
+ * Read JSON config file safely
+ */
+function readConfigFile(path: string): Partial<Config> {
+  try {
+    if (!existsSync(path)) {
+      return {};
+    }
+    const content = readFileSync(path, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Write JSON config file
+ */
+function writeConfigFile(path: string, config: Partial<Config>): void {
+  const dir = path.substring(0, path.lastIndexOf('/'));
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  writeFileSync(path, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+/**
+ * Get configuration with priority: project > global > env
+ */
+export function getConfig(): ResolvedConfig {
+  const envConfig: Partial<Config> = {};
+  const globalConfig = readConfigFile(GLOBAL_CONFIG_FILE);
+  const projectConfig = readConfigFile(PROJECT_CONFIG_FILE);
+
+  // Read from environment
+  if (process.env.LINEAR_API_KEY) {
+    envConfig.apiKey = process.env.LINEAR_API_KEY;
+  }
+
+  // Determine locations for each config value
+  const locations: ResolvedConfig['locations'] = {
+    apiKey: { type: 'none' },
+    defaultInitiative: { type: 'none' },
+    defaultTeam: { type: 'none' },
+  };
+
+  // API Key location (env has highest priority for security)
+  if (envConfig.apiKey) {
+    locations.apiKey = { type: 'env' };
+  } else if (projectConfig.apiKey) {
+    locations.apiKey = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.apiKey) {
+    locations.apiKey = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Default Initiative location
+  if (projectConfig.defaultInitiative) {
+    locations.defaultInitiative = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.defaultInitiative) {
+    locations.defaultInitiative = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Default Team location
+  if (projectConfig.defaultTeam) {
+    locations.defaultTeam = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.defaultTeam) {
+    locations.defaultTeam = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Merge configs with priority: project > global for most settings, but env > all for API key
+  const merged = {
+    ...globalConfig,
+    ...projectConfig,
+  };
+
+  // API key from env takes precedence
+  if (envConfig.apiKey) {
+    merged.apiKey = envConfig.apiKey;
+  }
+
+  return {
+    ...merged,
+    locations,
+  };
+}
+
+/**
+ * Get API key from config or environment
+ */
+export function getApiKey(): string | undefined {
+  const config = getConfig();
+  return config.apiKey;
+}
+
+/**
+ * Set default initiative
+ */
+export function setDefaultInitiative(
+  initiativeId: string,
+  scope: 'global' | 'project' = 'global'
+): void {
+  const configFile = scope === 'global' ? GLOBAL_CONFIG_FILE : PROJECT_CONFIG_FILE;
+  const existingConfig = readConfigFile(configFile);
+
+  existingConfig.defaultInitiative = initiativeId;
+  writeConfigFile(configFile, existingConfig);
+}
+
+/**
+ * Get global config file path
+ */
+export function getGlobalConfigPath(): string {
+  return GLOBAL_CONFIG_FILE;
+}
+
+/**
+ * Get project config file path
+ */
+export function getProjectConfigPath(): string {
+  return PROJECT_CONFIG_FILE;
+}
+
+/**
+ * Check if global config exists
+ */
+export function hasGlobalConfig(): boolean {
+  return existsSync(GLOBAL_CONFIG_FILE);
+}
+
+/**
+ * Check if project config exists
+ */
+export function hasProjectConfig(): boolean {
+  return existsSync(PROJECT_CONFIG_FILE);
+}
+
+/**
+ * Mask API key for display (show first 4 and last 3 characters)
+ */
+export function maskApiKey(apiKey: string): string {
+  if (apiKey.length <= 7) {
+    return '***';
+  }
+  return `${apiKey.substring(0, 4)}***${apiKey.substring(apiKey.length - 3)}`;
+}
