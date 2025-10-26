@@ -128,8 +128,8 @@ export async function extractIconsFromEntities(type?: 'labels' | 'workflow-state
 
   try {
     if (!type || type === 'labels') {
-      // Extract from issue labels
-      const issueLabels = await getAllIssueLabels();
+      // Extract from issue labels (workspace-wide: pass undefined to get all)
+      const issueLabels = await getAllIssueLabels(undefined);
       for (const label of issueLabels) {
         const emojis = extractEmoji(label.name);
         for (const emoji of emojis) {
@@ -168,8 +168,8 @@ export async function extractIconsFromEntities(type?: 'labels' | 'workflow-state
     }
 
     if (!type || type === 'workflow-states') {
-      // Extract from workflow states
-      const workflowStates = await getAllWorkflowStates();
+      // Extract from workflow states (workspace-wide: pass undefined to get all teams)
+      const workflowStates = await getAllWorkflowStates(undefined);
       for (const state of workflowStates) {
         const emojis = extractEmoji(state.name);
         for (const emoji of emojis) {
@@ -182,6 +182,28 @@ export async function extractIconsFromEntities(type?: 'labels' | 'workflow-state
               emoji,
               usageCount: 1,
               entities: [state.name],
+            });
+          }
+        }
+      }
+    }
+
+    if (!type || type === 'projects') {
+      // Extract from projects (workspace-wide)
+      const { getAllProjects } = await import('./linear-client.js');
+      const projects = await getAllProjects();
+      for (const project of projects) {
+        const emojis = extractEmoji(project.name);
+        for (const emoji of emojis) {
+          const existing = iconMap.get(emoji);
+          if (existing) {
+            existing.usageCount++;
+            existing.entities.push(project.name);
+          } else {
+            iconMap.set(emoji, {
+              emoji,
+              usageCount: 1,
+              entities: [project.name],
             });
           }
         }

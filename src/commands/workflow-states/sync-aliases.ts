@@ -50,7 +50,7 @@ export function syncWorkflowStateAliases(program: Command) {
 
         for (const state of states) {
           const slug = generateSlug(state.name);
-          const conflict = existingAliases[slug] && existingAliases[slug] !== state.id;
+          const conflict = !!(existingAliases[slug] && existingAliases[slug] !== state.id);
 
           aliasesToCreate.push({
             slug,
@@ -108,7 +108,7 @@ export function syncWorkflowStateAliases(program: Command) {
           }
 
           try {
-            await addAlias('workflow-state', alias.slug, alias.id, scope!, { skipValidation: true });
+            await addAlias('workflow-state', alias.slug, alias.id, scope!, { skipValidation: true as boolean });
             created++;
           } catch (error) {
             // Alias might already exist with same ID

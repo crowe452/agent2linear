@@ -61,7 +61,7 @@ export function findColorByHex(hex: string): Color | undefined {
  * Find color by name
  */
 export function findColorByName(name: string): Color | undefined {
-  return CURATED_COLORS.find(color => color.name.toLowerCase() === name.toLowerCase());
+  return CURATED_COLORS.find(color => color.name?.toLowerCase() === name.toLowerCase());
 }
 
 /**
@@ -72,8 +72,8 @@ export async function extractColorsFromEntities(type?: 'labels' | 'workflow-stat
 
   try {
     if (!type || type === 'labels') {
-      // Extract from issue labels
-      const issueLabels = await getAllIssueLabels();
+      // Extract from issue labels (workspace-wide: pass undefined to get all)
+      const issueLabels = await getAllIssueLabels(undefined);
       for (const label of issueLabels) {
         if (label.color) {
           const normalizedColor = label.color.toUpperCase();
@@ -108,8 +108,8 @@ export async function extractColorsFromEntities(type?: 'labels' | 'workflow-stat
     }
 
     if (!type || type === 'workflow-states') {
-      // Extract from workflow states
-      const workflowStates = await getAllWorkflowStates();
+      // Extract from workflow states (workspace-wide: pass undefined to get all teams)
+      const workflowStates = await getAllWorkflowStates(undefined);
       for (const state of workflowStates) {
         if (state.color) {
           const normalizedColor = state.color.toUpperCase();

@@ -1524,7 +1524,6 @@ export async function updateWorkflowState(id: string, input: WorkflowStateUpdate
 
     const payload = await client.updateWorkflowState(id, {
       name: input.name,
-      type: input.type,
       color: input.color,
       description: input.description,
       position: input.position,
@@ -1558,12 +1557,12 @@ export async function updateWorkflowState(id: string, input: WorkflowStateUpdate
 }
 
 /**
- * Delete a workflow state
+ * Delete a workflow state (archives it in Linear)
  */
 export async function deleteWorkflowState(id: string): Promise<boolean> {
   try {
     const client = getLinearClient();
-    const payload = await client.deleteWorkflowState(id);
+    const payload = await client.archiveWorkflowState(id);
     return payload.success;
   } catch (error) {
     if (error instanceof LinearClientError) {

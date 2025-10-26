@@ -7,8 +7,7 @@ export function viewWorkflowState(program: Command) {
   program
     .command('view <id>')
     .description('View workflow state details')
-    .option('-w, --web', 'Open workflow state in browser')
-    .action(async (id: string, options) => {
+    .action(async (id: string) => {
       try {
         // Resolve alias
         const resolvedId = resolveAlias('workflow-state', id);
@@ -22,12 +21,6 @@ export function viewWorkflowState(program: Command) {
         if (!state) {
           console.error(`❌ Workflow state not found: ${id}`);
           process.exit(1);
-        }
-
-        if (options.web) {
-          const open = await import('open');
-          await open.default(`https://linear.app/settings/workflow`);
-          return;
         }
 
         // Display details

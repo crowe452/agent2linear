@@ -7,8 +7,7 @@ export function viewIssueLabel(program: Command) {
   program
     .command('view <id>')
     .description('View issue label details')
-    .option('-w, --web', 'Open label in browser')
-    .action(async (id: string, options) => {
+    .action(async (id: string) => {
       try {
         const resolvedId = resolveAlias('issue-label', id);
         if (resolvedId !== id) {
@@ -19,12 +18,6 @@ export function viewIssueLabel(program: Command) {
         if (!label) {
           console.error(`❌ Issue label not found: ${id}`);
           process.exit(1);
-        }
-
-        if (options.web) {
-          const open = await import('open');
-          await open.default('https://linear.app/settings/labels');
-          return;
         }
 
         console.log('');

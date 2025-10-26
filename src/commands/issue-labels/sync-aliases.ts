@@ -30,7 +30,7 @@ export function syncIssueLabelAliases(program: Command) {
 
         for (const label of labels) {
           const slug = generateSlug(label.name);
-          const conflict = existingAliases[slug] && existingAliases[slug] !== label.id;
+          const conflict = !!(existingAliases[slug] && existingAliases[slug] !== label.id);
           aliasesToCreate.push({ slug, id: label.id, name: label.name, conflict });
         }
 
@@ -57,7 +57,7 @@ export function syncIssueLabelAliases(program: Command) {
         for (const alias of aliasesToCreate) {
           if (alias.conflict && !options.force) continue;
           try {
-            await addAlias('issue-label', alias.slug, alias.id, scope!, { skipValidation: true });
+            await addAlias('issue-label', alias.slug, alias.id, scope!, { skipValidation: true as boolean });
             created++;
           } catch (error) {
             // Skip if already exists with same ID

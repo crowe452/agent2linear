@@ -45,7 +45,7 @@ import { createIssueLabelCommand } from './commands/issue-labels/create.js';
 import { updateIssueLabelCommand } from './commands/issue-labels/update.js';
 import { deleteIssueLabelCommand } from './commands/issue-labels/delete.js';
 import { syncIssueLabelAliases } from './commands/issue-labels/sync-aliases.js';
-import { listProjectLabels } from './commands/project-labels/list.tsx';
+import { listProjectLabels } from './commands/project-labels/list.js';
 import { viewProjectLabel } from './commands/project-labels/view.js';
 import { createProjectLabelCommand } from './commands/project-labels/create.js';
 import { updateProjectLabelCommand } from './commands/project-labels/update.js';
