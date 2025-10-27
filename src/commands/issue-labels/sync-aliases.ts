@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { getAllIssueLabels } from '../../lib/linear-client.js';
 import { syncAliasesCore, type SyncAliasesOptions } from '../../lib/sync-aliases.js';
+import { resolveAlias } from '../../lib/aliases.js';
 
 /**
  * Extended options for issue-label sync (includes team filtering)
@@ -13,7 +14,13 @@ export interface SyncIssueLabelAliasesOptions extends SyncAliasesOptions {
  * Core function to sync issue label aliases (can be called from multiple places)
  */
 export async function syncIssueLabelAliasesCore(options: SyncIssueLabelAliasesOptions): Promise<void> {
-  const labels = await getAllIssueLabels(options.team);
+  // Resolve team alias to ID if provided
+  let teamId = options.team;
+  if (teamId) {
+    teamId = resolveAlias('team', teamId);
+  }
+
+  const labels = await getAllIssueLabels(teamId);
 
   await syncAliasesCore({
     entityType: 'issue-label',
