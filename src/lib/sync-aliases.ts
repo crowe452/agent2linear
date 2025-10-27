@@ -187,6 +187,7 @@ export async function syncAliasesCore<T extends SyncableEntity>(
 
     let created = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const alias of aliasesToCreate) {
       // Skip duplicates
@@ -211,11 +212,16 @@ export async function syncAliasesCore<T extends SyncableEntity>(
           continue;
         }
         console.error(`   ❌ Failed to create alias ${alias.slug}:`, error instanceof Error ? error.message : 'Unknown error');
+        failed++;
       }
     }
 
     console.log('');
-    console.log(`✅ Created ${created} ${entityTypeName} aliases (${scope})`);
+    if (failed > 0) {
+      console.log(`⚠️  Created ${created} ${entityTypeName} aliases with ${failed} failures (${scope})`);
+    } else {
+      console.log(`✅ Created ${created} ${entityTypeName} aliases (${scope})`);
+    }
     if (skipped > 0) {
       const reason = duplicates.length > 0 ? 'conflicts or duplicates' : 'conflicts (use --force to overwrite)';
       console.log(`   Skipped ${skipped} due to ${reason}`);
