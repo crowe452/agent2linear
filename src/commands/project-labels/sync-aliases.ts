@@ -14,6 +14,7 @@ export async function syncProjectLabelAliasesCore(options: SyncAliasesOptions): 
     entityTypeNamePlural: 'project labels',
     entities: labels,
     options,
+    detectDuplicates: true,
   });
 }
 

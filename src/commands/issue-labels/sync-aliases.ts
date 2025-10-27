@@ -28,6 +28,7 @@ export async function syncIssueLabelAliasesCore(options: SyncIssueLabelAliasesOp
     entityTypeNamePlural: 'issue labels',
     entities: labels,
     options,
+    detectDuplicates: true,
   });
 }
 
