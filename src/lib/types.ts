@@ -7,6 +7,14 @@ export interface Config {
   defaultMilestoneTemplate?: string;
   projectCacheMinTTL?: number; // Cache TTL in minutes (default: 60)
   defaultAutoAssignLead?: boolean; // Auto-assign project lead to creator (default: true)
+
+  // Entity cache configuration (M14 caching system)
+  entityCacheMinTTL?: number; // Entity cache TTL in minutes (default: 60)
+  enableEntityCache?: boolean; // Enable/disable entity caching (default: true)
+  enablePersistentCache?: boolean; // Enable/disable file-based cache (default: true)
+  enableSessionCache?: boolean; // Enable/disable in-memory cache (default: true)
+  enableBatchFetching?: boolean; // Enable/disable batch API calls (default: true)
+  prewarmCacheOnCreate?: boolean; // Auto-prewarm cache on project create (default: true)
 }
 
 export interface ConfigLocation {
@@ -24,6 +32,12 @@ export interface ResolvedConfig extends Config {
     defaultMilestoneTemplate: ConfigLocation;
     projectCacheMinTTL: ConfigLocation;
     defaultAutoAssignLead: ConfigLocation;
+    entityCacheMinTTL: ConfigLocation;
+    enableEntityCache: ConfigLocation;
+    enablePersistentCache: ConfigLocation;
+    enableSessionCache: ConfigLocation;
+    enableBatchFetching: ConfigLocation;
+    prewarmCacheOnCreate: ConfigLocation;
   };
 }
 
@@ -141,4 +155,71 @@ export interface Icon {
   emoji?: string;
   unicode?: string;
   category?: string;
+}
+
+/**
+ * Project list filters (M20)
+ */
+export interface ProjectListFilters {
+  teamId?: string;
+  initiativeId?: string;
+  statusId?: string;
+  priority?: number;
+  leadId?: string;
+  memberIds?: string[];
+  labelIds?: string[];
+  startDateAfter?: string;
+  startDateBefore?: string;
+  targetDateAfter?: string;
+  targetDateBefore?: string;
+  search?: string;
+}
+
+/**
+ * Project list item with comprehensive fields (M20)
+ */
+export interface ProjectListItem {
+  id: string;
+  name: string;
+  description?: string;
+  content?: string;
+  icon?: string;
+  color?: string;
+  state: string;
+  priority?: number;
+  status?: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  lead?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  team?: {
+    id: string;
+    name: string;
+    key: string;
+  };
+  initiative?: {
+    id: string;
+    name: string;
+  };
+  labels: Array<{
+    id: string;
+    name: string;
+    color?: string;
+  }>;
+  members: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  startDate?: string;
+  targetDate?: string;
+  completedAt?: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -13,6 +13,7 @@ import { syncInitiativeAliases } from './commands/initiatives/sync-aliases.js';
 import { createProjectCommand } from './commands/project/create.js';
 import { viewProject } from './commands/project/view.js';
 import { updateProjectCommand } from './commands/project/update.js';
+import { listProjectsCommand } from './commands/project/list.js';
 import { listTeams } from './commands/teams/list.js';
 import { selectTeam } from './commands/teams/select.js';
 import { setTeam } from './commands/teams/set.js';
@@ -72,7 +73,7 @@ const cli = new Command();
 cli
   .name('linear-create')
   .description('Command-line tool for creating Linear issues and projects')
-  .version('0.14.0')
+  .version('0.19.0')
   .action(() => {
     cli.help();
   });
@@ -308,6 +309,9 @@ project
   .option('--labels <ids>', 'Comma-separated project label IDs or aliases')
   .addOption(new Option('--start-date-resolution <resolution>', 'Start date resolution').choices(['month', 'quarter', 'halfYear', 'year']))
   .addOption(new Option('--target-date-resolution <resolution>', 'Target date resolution').choices(['month', 'quarter', 'halfYear', 'year']))
+  .option('--link <url-and-label>', 'Add external link as "URL" or "URL|Label" (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
+  .option('--remove-link <url>', 'Remove external link by exact URL match (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
+  .option('-w, --web', 'Open project in browser after update')
   .addHelpText('after', `
 Examples:
   $ linear-create project update "My Project" --status "In Progress"
@@ -319,6 +323,14 @@ Examples:
 
   Update multiple fields:
   $ linear-create proj update "Q1 Goals" --status in-progress --priority 2 --target-date 2025-03-31
+
+  Manage external links:
+  $ linear-create proj update "My Project" --link "https://github.com/org/repo|GitHub"
+  $ linear-create proj update "My Project" --remove-link "https://old-link.com"
+  $ linear-create proj update "My Project" --link "https://new.com|New" --remove-link "https://old.com"
+
+  Open in browser after update:
+  $ linear-create proj update "My Project" --priority 1 --web
 `)
   .action(async (nameOrId: string, options) => {
     await updateProjectCommand(nameOrId, options);
@@ -341,6 +353,9 @@ Note: Set default template with:
   .action(async (projectId: string, options) => {
     await addMilestones(projectId, options);
   });
+
+// Register project list command (M20)
+listProjectsCommand(project);
 
 // Issues commands (stub - coming in v0.5.0)
 const issues = cli

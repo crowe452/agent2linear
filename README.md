@@ -39,6 +39,194 @@ linear-create project create --title "My Project" --description "Description" --
 linear-create config show
 ```
 
+## Project List & Search
+
+List and search projects with smart defaults and extensive filtering. The `project list` command provides intelligent defaults for common workflows while supporting comprehensive filtering options.
+
+### Smart Defaults
+
+By default, `project list` filters to show projects where **you are the lead**, in your **default team and initiative** (if configured):
+
+```bash
+# Smart defaults: projects I lead in my default team/initiative
+linear-create project list
+
+# Equivalent to (if you have defaults configured):
+# --lead <current-user-id> --team <default-team> --initiative <default-initiative>
+```
+
+### Override Flags
+
+Use these flags to bypass smart defaults and see more projects:
+
+```bash
+# Show ALL projects (any lead) in default team/initiative
+linear-create project list --all-leads
+
+# Show projects I lead across ALL teams
+linear-create project list --all-teams
+
+# Show projects I lead across ALL initiatives
+linear-create project list --all-initiatives
+
+# Override everything - show ALL projects everywhere
+linear-create project list --all-leads --all-teams --all-initiatives
+```
+
+### Filter Options
+
+**Core Filters:**
+```bash
+# Filter by team
+linear-create project list --team backend
+linear-create project list -t backend
+
+# Filter by initiative
+linear-create project list --initiative q1-goals
+linear-create project list -i q1-goals
+
+# Filter by project status
+linear-create project list --status planned
+linear-create project list -s started
+
+# Filter by priority (0-4)
+linear-create project list --priority 1
+linear-create project list -p 2
+
+# Filter by specific project lead
+linear-create project list --lead alice@company.com
+linear-create project list -l alice
+
+# Filter by member (projects where someone is assigned)
+linear-create project list --member bob
+linear-create project list -m alice,bob  # Multiple members
+
+# Filter by label
+linear-create project list --label urgent
+linear-create project list --label urgent,critical  # Multiple labels
+
+# Search in project name, description, or content
+linear-create project list --search "API"
+linear-create project list --search "mobile redesign"
+```
+
+**Date Range Filters:**
+```bash
+# Projects starting in Q1 2025
+linear-create project list --start-after 2025-01-01 --start-before 2025-03-31
+
+# Projects targeting after June 2025
+linear-create project list --target-after 2025-06-01
+
+# Projects targeting before end of year
+linear-create project list --target-before 2025-12-31
+```
+
+### Output Formats
+
+**Table Format (default):**
+```bash
+linear-create project list
+```
+Output:
+```
+ID           Title                          Status      Team           Lead                 Preview
+-----------------------------------------------------------------------------------------------------------------------
+bf2e1a8a9b   Mobile App Redesign            Started     Mobile         Alice Johnson        Complete redesign of iOS...
+a9c3d4e5f6   API v2 Migration               Planned     Backend        Bob Smith            Migrate all endpoints...
+c1d2e3f4g5   Customer Dashboard             Completed   Frontend       Carol Davis          New dashboard for customer...
+
+Total: 3 projects
+```
+
+**JSON Format:**
+```bash
+# Machine-readable format for scripting
+linear-create project list --format json
+linear-create project list -f json
+
+# Example with filtering
+linear-create project list --team backend --status started --format json
+```
+
+**TSV Format:**
+```bash
+# Tab-separated values for data processing
+linear-create project list --format tsv
+linear-create project list -f tsv > projects.tsv
+```
+
+**Interactive Mode:**
+```bash
+# Ink UI with rich formatting
+linear-create project list --interactive
+linear-create project list -I
+```
+
+### Complex Filter Examples
+
+```bash
+# Backend team projects, started status, high priority
+linear-create project list --team backend --status started --priority 1
+
+# Projects led by specific person in any team
+linear-create project list --lead alice@company.com --all-teams
+
+# Projects where Bob is assigned (as member)
+linear-create project list --member bob --all-leads
+
+# Search for "API" projects in backend team (any lead)
+linear-create project list --search "API" --team backend --all-leads
+
+# Urgent projects targeting Q1 2025
+linear-create project list --label urgent --target-after 2025-01-01 --target-before 2025-03-31
+
+# All projects with multiple filters
+linear-create project list \
+  --team backend \
+  --status started \
+  --priority 1 \
+  --lead alice \
+  --label critical
+
+# Export all projects to JSON
+linear-create project list --all-teams --all-leads --all-initiatives --format json > all-projects.json
+```
+
+### Alias Support
+
+All entity filters support aliases:
+
+```bash
+# Use team alias instead of ID
+linear-create project list --team backend
+
+# Use initiative alias
+linear-create project list --initiative q1-goals
+
+# Use member alias
+linear-create project list --lead alice
+
+# Use label alias
+linear-create project list --label urgent,critical
+```
+
+### Setting Defaults
+
+Configure default values to streamline your workflow:
+
+```bash
+# Set default team
+linear-create config set defaultTeam backend
+
+# Set default initiative
+linear-create config set defaultInitiative q1-goals
+
+# Now simple list uses your defaults:
+linear-create project list
+# Shows: projects you lead in 'backend' team within 'q1-goals' initiative
+```
+
 ## Milestone Templates
 
 Milestone templates allow you to quickly set up project milestones using predefined templates. Templates are stored locally in JSON files and can be customized for your workflows.
@@ -219,6 +407,53 @@ Aliases are scoped by entity type, meaning you can use the same alias name for d
 linear-create alias add initiative backend init_abc123
 linear-create alias add team backend team_xyz789
 ```
+
+## Icon Usage
+
+### Supported Icons
+
+linear-create supports Linear's standard icon catalog for projects. Icons can be specified by name (e.g., "Checklist", "Tree", "Joystick") and are validated by Linear's API.
+
+**Note on Icon Validation**: This tool does NOT validate icons client-side. Icons are passed directly to Linear's API for server-side validation. This design decision was made after investigation revealed:
+
+1. **No API catalog endpoint**: Linear's GraphQL API does not expose an endpoint to fetch the complete standard icon catalog
+2. **Emojis query limitation**: The `emojis` query only returns custom organization emojis (user-uploaded), not Linear's built-in icons
+3. **Maintenance burden**: Maintaining a hardcoded list would be incomplete and quickly outdated
+
+### Icon Discovery
+
+```bash
+# View curated icon suggestions (for discovery only, not exhaustive)
+linear-create icons list
+
+# Search for specific icons
+linear-create icons list --search rocket
+
+# View icons by category
+linear-create icons list --category status
+
+# Extract icons currently used in your workspace
+linear-create icons extract --type projects
+```
+
+### Using Icons
+
+```bash
+# Icon names are capitalized (Linear's format)
+linear-create project create --title "My Project" --team eng --icon "Checklist"
+linear-create project create --title "API" --team backend --icon "Joystick"
+linear-create project create --title "Design" --team frontend --icon "Tree"
+
+# If an invalid icon is provided, Linear API will return a helpful error
+linear-create project create --title "Test" --team eng --icon "InvalidIcon"
+# Error: Icon not found (from Linear API)
+```
+
+### Icon Resources
+
+- The `linear-create icons list` command shows ~67 curated icons for discovery
+- Linear supports hundreds of standard icons beyond this curated list
+- Invalid icons will be rejected by Linear's API with clear error messages
 
 ## Development
 

@@ -1,0 +1,352 @@
+import React from 'react';
+import { render, Box, Text } from 'ink';
+import type { Command } from 'commander';
+import { getAllProjects, getCurrentUser } from '../../lib/linear-client.js';
+import { showError } from '../../lib/output.js';
+import { getConfig } from '../../lib/config.js';
+import { resolveAlias } from '../../lib/aliases.js';
+import type { ProjectListFilters, ProjectListItem } from '../../lib/types.js';
+
+// ========================================
+// HELPER: Build filters from options with smart defaults
+// ========================================
+async function buildDefaultFilters(options: any): Promise<ProjectListFilters> {
+  const config = getConfig();
+  const filters: ProjectListFilters = {};
+
+  // ========================================
+  // LEAD FILTER (default: current user)
+  // ========================================
+  if (!options.allLeads) {
+    if (options.lead) {
+      // Explicit lead specified - resolve it
+      const leadId = resolveAlias('member', options.lead);
+      filters.leadId = leadId;
+    } else {
+      // Default: current user is the lead
+      const currentUser = await getCurrentUser();
+      filters.leadId = currentUser.id;
+    }
+  }
+  // If --all-leads: don't set leadId filter (show all leads)
+
+  // ========================================
+  // TEAM FILTER (default: config.defaultTeam)
+  // ========================================
+  if (!options.allTeams) {
+    const teamId = options.team || config.defaultTeam;
+    if (teamId) {
+      filters.teamId = resolveAlias('team', teamId);
+    }
+  }
+  // If --all-teams: don't set teamId filter (show all teams)
+
+  // ========================================
+  // INITIATIVE FILTER (default: config.defaultInitiative)
+  // ========================================
+  if (!options.allInitiatives) {
+    const initiativeId = options.initiative || config.defaultInitiative;
+    if (initiativeId) {
+      filters.initiativeId = resolveAlias('initiative', initiativeId);
+    }
+  }
+  // If --all-initiatives: don't set initiativeId filter (show all initiatives)
+
+  // ========================================
+  // EXPLICIT FILTERS (no defaults, only if specified)
+  // ========================================
+
+  if (options.status) {
+    filters.statusId = resolveAlias('project-status', options.status);
+  }
+
+  if (options.priority !== undefined) {
+    filters.priority = parseInt(options.priority, 10);
+  }
+
+  if (options.member) {
+    // Can be comma-separated list
+    const members = options.member.split(',').map((m: string) => m.trim());
+    filters.memberIds = members.map((m: string) => resolveAlias('member', m));
+  }
+
+  if (options.label) {
+    // Can be comma-separated list
+    const labels = options.label.split(',').map((l: string) => l.trim());
+    filters.labelIds = labels.map((l: string) => resolveAlias('project-label', l));
+  }
+
+  // Date range filters
+  if (options.startAfter) {
+    filters.startDateAfter = options.startAfter;
+  }
+  if (options.startBefore) {
+    filters.startDateBefore = options.startBefore;
+  }
+  if (options.targetAfter) {
+    filters.targetDateAfter = options.targetAfter;
+  }
+  if (options.targetBefore) {
+    filters.targetDateBefore = options.targetBefore;
+  }
+
+  // Search query
+  if (options.search) {
+    filters.search = options.search;
+  }
+
+  return filters;
+}
+
+// ========================================
+// HELPER: Format content preview
+// ========================================
+function formatContentPreview(project: ProjectListItem): string {
+  // Prefer description over content
+  const text = project.description || project.content || '';
+
+  if (!text) return '';
+
+  // Remove markdown formatting, newlines
+  const cleaned = text
+    .replace(/[#*_~`]/g, '')  // Remove markdown syntax
+    .replace(/\n+/g, ' ')      // Replace newlines with spaces
+    .replace(/\s+/g, ' ')      // Collapse whitespace
+    .trim();
+
+  // Truncate to 60 chars
+  return cleaned.length > 60
+    ? cleaned.substring(0, 57) + '...'
+    : cleaned;
+}
+
+// ========================================
+// HELPER: Format table output
+// ========================================
+function formatTableOutput(projects: ProjectListItem[]): void {
+  if (projects.length === 0) {
+    console.log('No projects found.');
+    return;
+  }
+
+  // Calculate column widths
+  const idWidth = 12;
+  const titleWidth = 30;
+  const statusWidth = 12;
+  const teamWidth = 15;
+  const leadWidth = 20;
+  const previewWidth = 60;
+
+  // Header
+  console.log(
+    'ID'.padEnd(idWidth) +
+    'Title'.padEnd(titleWidth) +
+    'Status'.padEnd(statusWidth) +
+    'Team'.padEnd(teamWidth) +
+    'Lead'.padEnd(leadWidth) +
+    'Preview'
+  );
+  console.log('-'.repeat(idWidth + titleWidth + statusWidth + teamWidth + leadWidth + previewWidth));
+
+  // Rows
+  for (const project of projects) {
+    const id = project.id.substring(0, 11);
+    const title = project.name.length > 28
+      ? project.name.substring(0, 27) + '…'
+      : project.name;
+    const status = (project.status?.name || project.state || '').substring(0, 11);
+    const team = (project.team?.name || '').substring(0, 14);
+    const lead = (project.lead?.name || '').substring(0, 19);
+    const preview = formatContentPreview(project);
+
+    console.log(
+      id.padEnd(idWidth) +
+      title.padEnd(titleWidth) +
+      status.padEnd(statusWidth) +
+      team.padEnd(teamWidth) +
+      lead.padEnd(leadWidth) +
+      preview
+    );
+  }
+
+  console.log(`\nTotal: ${projects.length} project${projects.length !== 1 ? 's' : ''}`);
+}
+
+// ========================================
+// HELPER: Format JSON output
+// ========================================
+function formatJSONOutput(projects: ProjectListItem[]): void {
+  console.log(JSON.stringify(projects, null, 2));
+}
+
+// ========================================
+// HELPER: Format TSV output
+// ========================================
+function formatTSVOutput(projects: ProjectListItem[]): void {
+  // Headers
+  console.log('ID\tTitle\tStatus\tTeam\tLead\tPreview');
+
+  // Rows
+  for (const project of projects) {
+    const status = project.status?.name || project.state || '';
+    const team = project.team?.name || '';
+    const lead = project.lead?.name || '';
+    const preview = formatContentPreview(project);
+
+    console.log(
+      `${project.id}\t${project.name}\t${status}\t${team}\t${lead}\t${preview}`
+    );
+  }
+}
+
+// ========================================
+// INK COMPONENT: Interactive list
+// ========================================
+interface ProjectListProps {
+  filters: ProjectListFilters;
+  format?: string;
+}
+
+function ProjectList({ filters }: ProjectListProps): React.ReactElement {
+  const [projects, setProjects] = React.useState<ProjectListItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function fetchProjects() {
+      try {
+        setLoading(true);
+        const projectList = await getAllProjects(filters);
+        setProjects(projectList);
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message);
+        setLoading(false);
+      }
+    }
+
+    fetchProjects();
+  }, []);
+
+  if (loading) {
+    return <Text>Loading projects...</Text>;
+  }
+
+  if (error) {
+    return <Text color="red">Error: {error}</Text>;
+  }
+
+  if (projects.length === 0) {
+    return <Text color="yellow">No projects found matching your filters.</Text>;
+  }
+
+  return (
+    <Box flexDirection="column">
+      <Text bold underline>Projects ({projects.length})</Text>
+      <Text> </Text>
+
+      {projects.map((project) => (
+        <Box key={project.id} flexDirection="column" marginBottom={1}>
+          <Text>
+            <Text bold color="cyan">{project.name}</Text>
+            {' '}
+            <Text dimColor>({project.id.substring(0, 8)}...)</Text>
+          </Text>
+
+          <Text>
+            Status: <Text color="green">{project.status?.name || project.state}</Text>
+            {' | '}
+            Team: <Text color="blue">{project.team?.name || 'N/A'}</Text>
+            {' | '}
+            Lead: <Text color="magenta">{project.lead?.name || 'N/A'}</Text>
+          </Text>
+
+          {(project.description || project.content) && (
+            <Text dimColor>{formatContentPreview(project)}</Text>
+          )}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+// ========================================
+// COMMAND REGISTRATION
+// ========================================
+export function listProjectsCommand(program: Command): void {
+  program
+    .command('list')
+    .alias('ls')
+    .description('List projects with smart defaults and filtering')
+
+    // Filter options
+    .option('-t, --team <id>', 'Filter by team (default: config.defaultTeam)')
+    .option('-i, --initiative <id>', 'Filter by initiative (default: config.defaultInitiative)')
+    .option('-s, --status <id>', 'Filter by project status')
+    .option('-p, --priority <number>', 'Filter by priority (0-4)')
+    .option('-l, --lead <id>', 'Filter by project lead (default: current user)')
+    .option('-m, --member <id>', 'Filter by member (comma-separated for multiple)')
+    .option('--label <id>', 'Filter by label (comma-separated for multiple)')
+    .option('--search <query>', 'Search in project name, description, or content')
+
+    // Date range filters
+    .option('--start-after <date>', 'Filter projects starting after date (YYYY-MM-DD)')
+    .option('--start-before <date>', 'Filter projects starting before date (YYYY-MM-DD)')
+    .option('--target-after <date>', 'Filter projects targeting after date (YYYY-MM-DD)')
+    .option('--target-before <date>', 'Filter projects targeting before date (YYYY-MM-DD)')
+
+    // Override flags
+    .option('--all-leads', 'Show projects with any lead (overrides default: current user)')
+    .option('--all-teams', 'Show projects from all teams (overrides default team)')
+    .option('--all-initiatives', 'Show projects from all initiatives (overrides default initiative)')
+
+    // Output format
+    .option('-f, --format <type>', 'Output format: table (default), json, tsv', 'table')
+    .option('-I, --interactive', 'Interactive mode with Ink UI')
+    .option('-w, --web', 'Open in web browser')
+
+    .action(async (options) => {
+      try {
+        // Build filters with smart defaults
+        const filters = await buildDefaultFilters(options);
+
+        // Web mode - open in browser
+        if (options.web) {
+          // TODO: Implement web browser opening
+          // For now, just show error
+          showError('Web mode not yet implemented');
+          process.exit(1);
+        }
+
+        // Non-interactive formats - handle synchronously before Ink
+        if (options.format !== 'table' && !options.interactive) {
+          const projects = await getAllProjects(filters);
+
+          if (options.format === 'json') {
+            formatJSONOutput(projects);
+          } else if (options.format === 'tsv') {
+            formatTSVOutput(projects);
+          } else {
+            // Default: table
+            formatTableOutput(projects);
+          }
+
+          process.exit(0);
+        }
+
+        // Handle table format without interactive
+        if (options.format === 'table' && !options.interactive) {
+          const projects = await getAllProjects(filters);
+          formatTableOutput(projects);
+          process.exit(0);
+        }
+
+        // Interactive mode with Ink UI
+        render(<ProjectList filters={filters} format={options.format} />);
+
+      } catch (error: any) {
+        showError(error.message);
+        process.exit(1);
+      }
+    });
+}

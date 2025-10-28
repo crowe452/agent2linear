@@ -196,7 +196,7 @@ export async function extractIconsFromEntities(
     if (!type || type === 'projects') {
       // Extract from projects (team-scoped or workspace-wide)
       const { getAllProjects } = await import('./linear-client.js');
-      const projects = await getAllProjects(teamId);
+      const projects = await getAllProjects(teamId ? { teamId } : undefined);
       for (const project of projects) {
         // Use the icon field directly (not project name)
         if (project.icon) {

@@ -1,5 +1,6 @@
 import { LinearClient as SDKClient } from '@linear/sdk';
 import { getApiKey } from './config.js';
+import type { ProjectListFilters, ProjectListItem } from './types.js';
 
 export class LinearClientError extends Error {
   constructor(message: string) {
@@ -604,37 +605,141 @@ export async function resolveMemberIdentifier(
 }
 
 /**
- * Get all projects from Linear
- * @param teamId - Optional team ID to filter projects by team
+ * Get all projects from Linear with comprehensive filtering (M20)
+ * @param filters - Optional filters to apply (team, initiative, status, priority, lead, members, labels, dates, search)
  */
-export async function getAllProjects(teamId?: string): Promise<Project[]> {
+export async function getAllProjects(filters?: ProjectListFilters): Promise<ProjectListItem[]> {
   try {
     const client = getLinearClient();
 
-    // Fetch all projects (team filtering happens client-side)
-    const projects = await client.projects();
+    // Build GraphQL filter object
+    const graphqlFilter: any = {};
 
-    const result: Project[] = [];
-    for await (const project of projects.nodes) {
-      // If teamId specified, check if project belongs to team
-      if (teamId) {
-        const teams = await project.teams();
-        const teamIds = teams.nodes.map(t => t.id);
-        if (!teamIds.includes(teamId)) {
-          continue; // Skip projects not in this team
-        }
+    if (filters?.teamId) {
+      graphqlFilter.team = { id: { eq: filters.teamId } };
+    }
+
+    if (filters?.initiativeId) {
+      graphqlFilter.initiative = { id: { eq: filters.initiativeId } };
+    }
+
+    if (filters?.statusId) {
+      graphqlFilter.projectStatus = { id: { eq: filters.statusId } };
+    }
+
+    if (filters?.priority !== undefined) {
+      graphqlFilter.priority = { eq: filters.priority };
+    }
+
+    if (filters?.leadId) {
+      graphqlFilter.lead = { id: { eq: filters.leadId } };
+    }
+
+    if (filters?.memberIds && filters.memberIds.length > 0) {
+      graphqlFilter.members = { some: { id: { in: filters.memberIds } } };
+    }
+
+    if (filters?.labelIds && filters.labelIds.length > 0) {
+      graphqlFilter.labels = { some: { id: { in: filters.labelIds } } };
+    }
+
+    // Date range filters
+    if (filters?.startDateAfter || filters?.startDateBefore) {
+      graphqlFilter.startDate = {};
+      if (filters.startDateAfter) {
+        graphqlFilter.startDate.gte = filters.startDateAfter;
       }
+      if (filters.startDateBefore) {
+        graphqlFilter.startDate.lte = filters.startDateBefore;
+      }
+    }
 
-      result.push({
+    if (filters?.targetDateAfter || filters?.targetDateBefore) {
+      graphqlFilter.targetDate = {};
+      if (filters.targetDateAfter) {
+        graphqlFilter.targetDate.gte = filters.targetDateAfter;
+      }
+      if (filters.targetDateBefore) {
+        graphqlFilter.targetDate.lte = filters.targetDateBefore;
+      }
+    }
+
+    // Text search (search in name, description, content)
+    if (filters?.search) {
+      graphqlFilter.or = [
+        { name: { containsIgnoreCase: filters.search } },
+        { description: { containsIgnoreCase: filters.search } },
+        { content: { containsIgnoreCase: filters.search } }
+      ];
+    }
+
+    // Fetch projects with all relations
+    const projects = await client.projects({
+      filter: Object.keys(graphqlFilter).length > 0 ? graphqlFilter : undefined,
+      includeArchived: false
+    });
+
+    // Map to ProjectListItem format
+    const projectList: ProjectListItem[] = [];
+
+    for (const project of projects.nodes) {
+      // Get team (projects can belong to multiple teams, get the first one)
+      const teams = await project.teams();
+      const team = teams.nodes[0];
+
+      const lead = await project.lead;
+      const labels = await project.labels();
+      const members = await project.members();
+
+      projectList.push({
         id: project.id,
         name: project.name,
         description: project.description || undefined,
+        content: project.content || undefined,
         icon: project.icon || undefined,
+        color: project.color || undefined,
+        state: project.state,
+        priority: project.priority !== undefined ? project.priority : undefined,
+
+        status: undefined, // Project status is not available in Linear SDK v27+
+
+        lead: lead ? {
+          id: lead.id,
+          name: lead.name,
+          email: lead.email
+        } : undefined,
+
+        team: team ? {
+          id: team.id,
+          name: team.name,
+          key: team.key
+        } : undefined,
+
+        initiative: undefined, // Initiative relationship needs to be fetched differently
+
+        labels: labels.nodes.map(label => ({
+          id: label.id,
+          name: label.name,
+          color: label.color || undefined
+        })),
+
+        members: members.nodes.map(member => ({
+          id: member.id,
+          name: member.name,
+          email: member.email
+        })),
+
+        startDate: project.startDate ? (typeof project.startDate === 'string' ? project.startDate : project.startDate.toISOString().split('T')[0]) : undefined,
+        targetDate: project.targetDate ? (typeof project.targetDate === 'string' ? project.targetDate : project.targetDate.toISOString().split('T')[0]) : undefined,
+        completedAt: project.completedAt ? (typeof project.completedAt === 'string' ? project.completedAt : project.completedAt.toISOString()) : undefined,
+
+        url: project.url,
+        createdAt: typeof project.createdAt === 'string' ? project.createdAt : project.createdAt.toISOString(),
+        updatedAt: typeof project.updatedAt === 'string' ? project.updatedAt : project.updatedAt.toISOString()
       });
     }
 
-    // Sort by name
-    return result.sort((a, b) => a.name.localeCompare(b.name));
+    return projectList;
   } catch (error) {
     if (error instanceof LinearClientError) {
       throw error;
@@ -2208,6 +2313,25 @@ export async function getProjectExternalLinks(projectId: string): Promise<Extern
 
     throw new Error(
       `Failed to fetch external links: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Delete an external link
+ */
+export async function deleteExternalLink(id: string): Promise<boolean> {
+  try {
+    const client = getLinearClient();
+    const result = await client.deleteEntityExternalLink(id);
+    return result.success;
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to delete external link: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
