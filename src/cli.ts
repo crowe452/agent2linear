@@ -72,7 +72,7 @@ const cli = new Command();
 cli
   .name('linear-create')
   .description('Command-line tool for creating Linear issues and projects')
-  .version('0.13.2')
+  .version('0.14.0')
   .action(() => {
     cli.help();
   });
@@ -301,6 +301,13 @@ project
   .option('--priority <0-4>', 'Priority level (0-4)', parseInt)
   .option('--target-date <YYYY-MM-DD>', 'Target completion date')
   .option('--start-date <YYYY-MM-DD>', 'Estimated start date')
+  .option('--color <hex>', 'Project color (hex code like #FF6B6B)')
+  .option('--icon <icon>', 'Project icon name (passed directly to Linear API)')
+  .option('--lead <id>', 'Project lead (user ID, alias, or email)')
+  .option('--members <ids>', 'Comma-separated member IDs, aliases, or emails')
+  .option('--labels <ids>', 'Comma-separated project label IDs or aliases')
+  .addOption(new Option('--start-date-resolution <resolution>', 'Start date resolution').choices(['month', 'quarter', 'halfYear', 'year']))
+  .addOption(new Option('--target-date-resolution <resolution>', 'Target date resolution').choices(['month', 'quarter', 'halfYear', 'year']))
   .addHelpText('after', `
 Examples:
   $ linear-create project update "My Project" --status "In Progress"

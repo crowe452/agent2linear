@@ -596,6 +596,187 @@ if [ -n "$TEST_STATUS_ALIAS" ]; then
 fi
 
 # ============================================================
+# M15 TESTS - VISUAL & OWNERSHIP FIELDS (Phase 1)
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: M15 Phase 1 - Color, Icon, Lead"
+echo "=========================================="
+echo ""
+
+# Color tests
+run_test \
+    "M15: Update color with # prefix" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --color '#FF6B6B'"
+
+run_test \
+    "M15: Update color without # prefix (should normalize)" \
+    "$CLI_CMD project update '$PROJ_BY_ID' --color '4ECDC4'"
+
+# Icon tests (no client-side validation per M14.6)
+run_test \
+    "M15: Update icon - emoji" \
+    "$CLI_CMD project update '$PROJ_STATUS' --icon '🚀'"
+
+run_test \
+    "M15: Update icon - name" \
+    "$CLI_CMD project update '$PROJ_PRIORITY' --icon 'Checklist'"
+
+run_test \
+    "M15: Update icon - complex name" \
+    "$CLI_CMD project update '$PROJ_DATES' --icon 'Joystick'"
+
+# Lead tests (requires member in workspace)
+# Note: These tests assume at least one user exists
+# In practice, use actual user IDs or emails from your workspace
+
+# run_test \
+#     "M15: Update lead by user ID" \
+#     "$CLI_CMD project update '$PROJ_BY_NAME' --lead 'user_abc123'"
+
+# run_test \
+#     "M15: Update lead by email" \
+#     "$CLI_CMD project update '$PROJ_BY_ID' --lead 'user@example.com'"
+
+# ============================================================
+# M15 TESTS - COLLABORATION & ORGANIZATION (Phase 2)
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: M15 Phase 2 - Members, Labels"
+echo "=========================================="
+echo ""
+
+# Members tests (requires members in workspace)
+# Note: Commented out as they require actual user IDs
+
+# run_test \
+#     "M15: Update members - single member" \
+#     "$CLI_CMD project update '$PROJ_BY_NAME' --members 'user_123'"
+
+# run_test \
+#     "M15: Update members - multiple members" \
+#     "$CLI_CMD project update '$PROJ_BY_ID' --members 'user_1,user_2,user_3'"
+
+# run_test \
+#     "M15: Update members - mixed (ID + email)" \
+#     "$CLI_CMD project update '$PROJ_STATUS' --members 'user_123,john@example.com'"
+
+# Labels tests (requires project labels in workspace)
+# Note: Commented out as they require actual label IDs
+
+# run_test \
+#     "M15: Update labels - single label" \
+#     "$CLI_CMD project update '$PROJ_BY_NAME' --labels 'label_abc'"
+
+# run_test \
+#     "M15: Update labels - multiple labels" \
+#     "$CLI_CMD project update '$PROJ_BY_ID' --labels 'label_1,label_2,label_3'"
+
+# run_test \
+#     "M15: Update labels - with aliases" \
+#     "$CLI_CMD project update '$PROJ_PRIORITY' --labels 'urgent,frontend,label_xyz'"
+
+# ============================================================
+# M15 TESTS - DATE RESOLUTIONS (Phase 3)
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: M15 Phase 3 - Date Resolutions"
+echo "=========================================="
+echo ""
+
+run_test \
+    "M15: Update start-date-resolution - month" \
+    "$CLI_CMD project update '$PROJ_DATES' --start-date-resolution month"
+
+run_test \
+    "M15: Update start-date-resolution - quarter" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --start-date-resolution quarter"
+
+run_test \
+    "M15: Update start-date-resolution - halfYear" \
+    "$CLI_CMD project update '$PROJ_BY_ID' --start-date-resolution halfYear"
+
+run_test \
+    "M15: Update start-date-resolution - year" \
+    "$CLI_CMD project update '$PROJ_STATUS' --start-date-resolution year"
+
+run_test \
+    "M15: Update target-date-resolution - month" \
+    "$CLI_CMD project update '$PROJ_PRIORITY' --target-date-resolution month"
+
+run_test \
+    "M15: Update target-date-resolution - quarter" \
+    "$CLI_CMD project update '$PROJ_DATES' --target-date-resolution quarter"
+
+run_test \
+    "M15: Update both date resolutions together" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --start-date-resolution quarter --target-date-resolution year"
+
+run_test \
+    "M15: Update date + resolution together" \
+    "$CLI_CMD project update '$PROJ_DATES' --start-date '2025-03-01' --start-date-resolution quarter"
+
+# ============================================================
+# M15 TESTS - MULTI-FIELD COMBINATIONS
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: M15 - Multi-field Combinations"
+echo "=========================================="
+echo ""
+
+run_test \
+    "M15 Combo: Color + Icon" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --color '#FF6B6B' --icon '🎨'"
+
+run_test \
+    "M15 Combo: Color + Icon + Date Resolutions" \
+    "$CLI_CMD project update '$PROJ_BY_ID' --color '4ECDC4' --icon 'Tree' --start-date-resolution quarter --target-date-resolution year"
+
+run_test \
+    "M15 Combo: All visual fields" \
+    "$CLI_CMD project update '$PROJ_STATUS' --color '#26B5CE' --icon 'Joystick' --priority 1"
+
+# ============================================================
+# M15 ERROR TESTS
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: M15 - Error Validation"
+echo "=========================================="
+echo ""
+
+run_test \
+    "M15 Error: Invalid color format (not hex)" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --color 'ZZZZZZ'" \
+    "true"
+
+run_test \
+    "M15 Error: Invalid color format (too short)" \
+    "$CLI_CMD project update '$PROJ_BY_ID' --color 'FFF'" \
+    "true"
+
+run_test \
+    "M15 Error: Empty icon" \
+    "$CLI_CMD project update '$PROJ_STATUS' --icon ''" \
+    "true"
+
+run_test \
+    "M15 Error: Invalid start-date-resolution" \
+    "$CLI_CMD project update '$PROJ_DATES' --start-date-resolution weekly" \
+    "true"
+
+run_test \
+    "M15 Error: Invalid target-date-resolution" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --target-date-resolution daily" \
+    "true"
+
+# Note: Lead/Members not found errors would require actual invalid IDs
+# These are better tested manually or with fixture data
+
+# ============================================================
 # ERROR TESTS - VALIDATION
 # ============================================================
 

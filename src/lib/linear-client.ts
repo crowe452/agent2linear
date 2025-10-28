@@ -108,8 +108,10 @@ export async function validateInitiativeExists(
   initiativeId: string
 ): Promise<{ valid: boolean; name?: string; error?: string }> {
   try {
-    const client = getLinearClient();
-    const initiative = await client.initiative(initiativeId);
+    // Use entity cache instead of direct API call
+    const { getEntityCache } = await import('./entity-cache.js');
+    const cache = getEntityCache();
+    const initiative = await cache.findInitiativeById(initiativeId);
 
     if (!initiative) {
       return {
@@ -144,8 +146,10 @@ export async function validateTeamExists(
   teamId: string
 ): Promise<{ valid: boolean; name?: string; error?: string }> {
   try {
-    const client = getLinearClient();
-    const team = await client.team(teamId);
+    // Use entity cache instead of direct API call
+    const { getEntityCache } = await import('./entity-cache.js');
+    const cache = getEntityCache();
+    const team = await cache.findTeamById(teamId);
 
     if (!team) {
       return {
@@ -462,19 +466,21 @@ export async function getMemberById(
   userId: string
 ): Promise<{ id: string; name: string; email: string; active: boolean; admin: boolean } | null> {
   try {
-    const client = getLinearClient();
-    const user = await client.user(userId);
+    // Use entity cache instead of direct API call
+    const { getEntityCache } = await import('./entity-cache.js');
+    const cache = getEntityCache();
+    const member = await cache.findMemberById(userId);
 
-    if (!user) {
+    if (!member) {
       return null;
     }
 
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      active: user.active,
-      admin: user.admin,
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      active: member.active,
+      admin: member.admin,
     };
   } catch (error) {
     if (error instanceof LinearClientError) {
@@ -492,10 +498,11 @@ export async function getMemberById(
  */
 export async function getMemberByEmail(email: string): Promise<Member | null> {
   try {
-    const members = await getAllMembers({ emailFilter: email });
-    // Find exact match (case-insensitive)
-    const exactMatch = members.find(m => m.email.toLowerCase() === email.toLowerCase());
-    return exactMatch || null;
+    // Use entity cache instead of fetching all members
+    const { getEntityCache } = await import('./entity-cache.js');
+    const cache = getEntityCache();
+    const member = await cache.findMemberByEmail(email);
+    return member;
   } catch (error) {
     if (error instanceof LinearClientError) {
       throw error;
@@ -889,6 +896,16 @@ export interface ProjectUpdateInput {
   priority?: number;
   startDate?: string;
   targetDate?: string;
+  // M15 Phase 1: Visual & Ownership Fields
+  color?: string;
+  icon?: string;
+  leadId?: string;
+  // M15 Phase 2: Collaboration & Organization Fields
+  memberIds?: string[];
+  labelIds?: string[];
+  // M15 Phase 3: Date Resolutions
+  startDateResolution?: 'month' | 'quarter' | 'halfYear' | 'year';
+  targetDateResolution?: 'month' | 'quarter' | 'halfYear' | 'year';
 }
 
 /**
@@ -910,6 +927,13 @@ export async function updateProject(
       priority: number;
       startDate: string;
       targetDate: string;
+      color: string;
+      icon: string;
+      leadId: string;
+      memberIds: string[];
+      labelIds: string[];
+      startDateResolution: 'month' | 'quarter' | 'halfYear' | 'year';
+      targetDateResolution: 'month' | 'quarter' | 'halfYear' | 'year';
     }> = {};
 
     if (updates.statusId !== undefined) {
@@ -932,6 +956,30 @@ export async function updateProject(
     }
     if (updates.targetDate !== undefined) {
       updateInput.targetDate = updates.targetDate;
+    }
+    // M15 Phase 1: Visual & Ownership Fields
+    if (updates.color !== undefined) {
+      updateInput.color = updates.color;
+    }
+    if (updates.icon !== undefined) {
+      updateInput.icon = updates.icon;
+    }
+    if (updates.leadId !== undefined) {
+      updateInput.leadId = updates.leadId;
+    }
+    // M15 Phase 2: Collaboration & Organization Fields
+    if (updates.memberIds !== undefined) {
+      updateInput.memberIds = updates.memberIds;
+    }
+    if (updates.labelIds !== undefined) {
+      updateInput.labelIds = updates.labelIds;
+    }
+    // M15 Phase 3: Date Resolutions
+    if (updates.startDateResolution !== undefined) {
+      updateInput.startDateResolution = updates.startDateResolution;
+    }
+    if (updates.targetDateResolution !== undefined) {
+      updateInput.targetDateResolution = updates.targetDateResolution;
     }
 
     // Update the project
@@ -1224,26 +1272,19 @@ export async function getTemplateById(
   templateId: string
 ): Promise<{ id: string; name: string; type: 'issue' | 'project'; description?: string } | null> {
   try {
-    const client = getLinearClient();
+    // Use entity cache instead of direct API call
+    const { getEntityCache } = await import('./entity-cache.js');
+    const cache = getEntityCache();
+    const template = await cache.findTemplateById(templateId);
 
-    // Fetch the template by ID
-    const template = await client.template(templateId);
     if (!template) {
       return null;
-    }
-
-    // Determine template type based on the 'type' field from Linear
-    let templateType: 'issue' | 'project';
-    if (template.type.toLowerCase().includes('project')) {
-      templateType = 'project';
-    } else {
-      templateType = 'issue';
     }
 
     return {
       id: template.id,
       name: template.name,
-      type: templateType,
+      type: template.type,
       description: template.description || undefined,
     };
   } catch (error) {
