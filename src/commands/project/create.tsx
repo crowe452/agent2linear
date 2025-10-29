@@ -17,7 +17,6 @@ import {
 import { getConfig } from '../../lib/config.js';
 import { openInBrowser } from '../../lib/browser.js';
 import { resolveAlias } from '../../lib/aliases.js';
-import { resolveProjectStatusId } from '../../lib/status-cache.js';
 
 interface CreateOptions {
   title?: string;
@@ -44,6 +43,10 @@ interface CreateOptions {
   priority?: number;
   members?: string;
   link?: string | string[];
+  // M23: Dependency flags
+  dependsOn?: string;
+  blocks?: string;
+  dependency?: string[];
 }
 
 // Non-interactive mode
@@ -101,6 +104,14 @@ async function createProjectNonInteractive(options: CreateOptions) {
 
     // Get config for defaults
     const config = getConfig();
+
+    // Prewarm cache with all entities needed for validation (reduces API calls by 60-70%)
+    // Only if enabled in config (default: true)
+    if (config.prewarmCacheOnCreate !== false) {
+      console.log('🔄 Loading workspace data...');
+      const { prewarmProjectCreation } = await import('../../lib/batch-fetcher.js');
+      await prewarmProjectCreation();
+    }
     let initiativeId = options.initiative || config.defaultInitiative;
     let teamId = options.team || config.defaultTeam;
     let templateId = options.template || config.defaultProjectTemplate;
@@ -136,8 +147,8 @@ async function createProjectNonInteractive(options: CreateOptions) {
       console.log(`🔍 Validating template: ${templateId}...`);
       const template = await getTemplateById(templateId);
       if (!template) {
-        console.error(`❌ Template not found: ${templateId}`);
-        console.error('   Use "linear-create templates list projects" to see available templates');
+        const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+        console.error(formatEntityNotFoundError('template', templateId, 'templates list projects'));
         process.exit(1);
       }
       if (template.type !== 'project') {
@@ -150,31 +161,8 @@ async function createProjectNonInteractive(options: CreateOptions) {
     // Resolve status if provided
     let statusId = options.status;
     if (statusId) {
-      console.log(`🔍 Resolving status "${statusId}"...`);
-
-      // Try alias first
-      const aliasResolved = resolveAlias('project-status', statusId);
-
-      if (aliasResolved !== statusId) {
-        // Alias was found
-        statusId = aliasResolved;
-        console.log(`   ✓ Resolved alias: ${options.status} → ${statusId}`);
-      } else {
-        // Try name or ID lookup
-        const resolved = await resolveProjectStatusId(statusId);
-        if (resolved) {
-          if (resolved === statusId) {
-            console.log(`   ✓ Using status ID: ${statusId}`);
-          } else {
-            statusId = resolved;
-            console.log(`   ✓ Found status by name: "${options.status}"`);
-          }
-        } else {
-          console.error(`❌ Status not found: "${statusId}"`);
-          console.error('   Use "linear-create project-status list" to see available statuses');
-          process.exit(1);
-        }
-      }
+      const { resolveStatusOrThrow } = await import('../../lib/resolution.js');
+      statusId = await resolveStatusOrThrow(statusId, 'project-status');
     }
 
     // Validate team is provided (REQUIRED) - check this before doing expensive API calls
@@ -221,12 +209,45 @@ async function createProjectNonInteractive(options: CreateOptions) {
       process.exit(1);
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // ICON VALIDATION: DELIBERATELY REMOVED
+    // ════════════════════════════════════════════════════════════════
+    // Icons are passed directly to Linear API without CLI validation.
+    //
+    // Investigation revealed:
+    // 1. Linear's GraphQL API has no endpoint to fetch the standard icon catalog
+    // 2. The `emojis` query only returns custom organization emojis (user-uploaded)
+    // 3. Our curated CURATED_ICONS list (67 icons) was missing most valid Linear icons
+    // 4. Valid icons like "Checklist", "Skull", "Tree", "Joystick" were failing validation
+    //
+    // Decision: Remove client-side validation, rely on Linear's server-side validation.
+    // This eliminates maintenance burden and ensures all valid Linear icons work.
+    //
+    // The curated icon list in src/lib/icons.ts remains available for discovery
+    // via the `icons list` command, but is not used for validation.
+    //
+    // See: README.md "Icon Usage" section, MILESTONES.md M14.6
+    // ════════════════════════════════════════════════════════════════
+
+    // Validate color if provided
+    if (options.color) {
+      const { validateAndNormalizeColor } = await import('../../lib/validators.js');
+      const colorResult = validateAndNormalizeColor(options.color);
+      if (!colorResult.valid) {
+        console.error(colorResult.error);
+        process.exit(1);
+      }
+      // Use the normalized color value (with # prefix)
+      options.color = colorResult.value;
+    }
+
     console.log('\n🚀 Creating project...');
 
     // Parse and resolve label aliases
     let labelIds: string[] | undefined;
     if (options.labels) {
-      const rawLabels = options.labels.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      const { parseCommaSeparated } = await import('../../lib/parsers.js');
+      const rawLabels = parseCommaSeparated(options.labels);
 
       // Resolve all aliases
       labelIds = rawLabels.map(id => {
@@ -241,7 +262,8 @@ async function createProjectNonInteractive(options: CreateOptions) {
     // Resolve and validate member aliases
     let memberIds: string[] | undefined;
     if (options.members) {
-      const rawMembers = options.members.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      const { parseCommaSeparated } = await import('../../lib/parsers.js');
+      const rawMembers = parseCommaSeparated(options.members);
 
       // Validate all members exist using smart resolution
       console.log(`🔍 Validating ${rawMembers.length} project member(s)...`);
@@ -251,9 +273,9 @@ async function createProjectNonInteractive(options: CreateOptions) {
         const member = await resolveMemberIdentifier(identifier, resolveAlias);
 
         if (!member) {
-          console.error(`❌ Member not found: ${identifier}`);
-          console.error(`   Tried: alias lookup, ID lookup, and email lookup`);
-          console.error(`   Tip: Use "linear-create members list" to see available members`);
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('member', identifier, 'members list'));
+          console.error(`   Note: Tried alias lookup, ID lookup, and email lookup`);
           process.exit(1);
         }
 
@@ -282,9 +304,9 @@ async function createProjectNonInteractive(options: CreateOptions) {
       const member = await resolveMemberIdentifier(options.lead, resolveAlias);
 
       if (!member) {
-        console.error(`❌ Lead member not found: ${options.lead}`);
-        console.error(`   Tried: alias lookup, ID lookup, and email lookup`);
-        console.error(`   Tip: Use "linear-create members list" to see available members`);
+        const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+        console.error(formatEntityNotFoundError('lead member', options.lead, 'members list'));
+        console.error(`   Note: Tried alias lookup, ID lookup, and email lookup`);
         process.exit(1);
       }
 
@@ -345,22 +367,16 @@ async function createProjectNonInteractive(options: CreateOptions) {
 
     // Create external links if provided
     if (options.link) {
+      const { parsePipeDelimitedArray } = await import('../../lib/parsers.js');
       const linkArgs = Array.isArray(options.link) ? options.link : [options.link];
 
       if (linkArgs.length > 0) {
         // Parse link arguments: format is "URL" or "URL|Label"
-        const linksToCreate: Array<{ url: string; label: string }> = [];
-
-        for (const linkArg of linkArgs) {
-          if (linkArg.includes('|')) {
-            // Format: "URL|Label"
-            const [url, label] = linkArg.split('|', 2);
-            linksToCreate.push({ url: url.trim(), label: label.trim() });
-          } else {
-            // Format: "URL" (no label)
-            linksToCreate.push({ url: linkArg.trim(), label: '' });
-          }
-        }
+        const parsedLinks = parsePipeDelimitedArray(linkArgs);
+        const linksToCreate = parsedLinks.map(({ key, value }) => ({
+          url: key,
+          label: value || ''
+        }));
 
         console.log(`\n🔗 Creating ${linksToCreate.length} external link(s)...`);
 
@@ -374,6 +390,137 @@ async function createProjectNonInteractive(options: CreateOptions) {
             console.log(`   ✓ Link created: ${label || url}`);
           } catch (error) {
             console.error(`   ✗ Failed to create link "${url}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+      }
+    }
+
+    // M23: Create project dependencies if provided
+    if (options.dependsOn || options.blocks || (options.dependency && options.dependency.length > 0)) {
+      const { getLinearClient, createProjectRelation } = await import('../../lib/linear-client.js');
+      const { resolveDependencyProjects, parseAdvancedDependency } = await import('../../lib/parsers.js');
+      const client = getLinearClient();
+
+      const dependenciesToCreate: Array<{
+        relatedProjectId: string;
+        relatedProjectName?: string;
+        anchorType: 'start' | 'end';
+        relatedAnchorType: 'start' | 'end';
+        type: 'depends-on' | 'blocks' | 'advanced';
+      }> = [];
+
+      // Parse --depends-on (end → start)
+      if (options.dependsOn) {
+        try {
+          const projectIds = resolveDependencyProjects(options.dependsOn);
+          for (const projectId of projectIds) {
+            // Validate not self-referential
+            if (projectId === result.id) {
+              console.error(`\n⚠️  Warning: Skipping self-referential dependency (project cannot depend on itself)`);
+              continue;
+            }
+            dependenciesToCreate.push({
+              relatedProjectId: projectId,
+              anchorType: 'end',
+              relatedAnchorType: 'start',
+              type: 'depends-on',
+            });
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --depends-on: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Parse --blocks (start → end, but we create reverse relations)
+      if (options.blocks) {
+        try {
+          const projectIds = resolveDependencyProjects(options.blocks);
+          for (const projectId of projectIds) {
+            // Validate not self-referential
+            if (projectId === result.id) {
+              console.error(`\n⚠️  Warning: Skipping self-referential dependency (project cannot block itself)`);
+              continue;
+            }
+            // For "blocks", create a dependency where the OTHER project depends on THIS project
+            // This means: their end waits for my start
+            dependenciesToCreate.push({
+              relatedProjectId: projectId,
+              anchorType: 'start',
+              relatedAnchorType: 'end',
+              type: 'blocks',
+            });
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --blocks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Parse --dependency (advanced syntax)
+      if (options.dependency && options.dependency.length > 0) {
+        for (const depSpec of options.dependency) {
+          try {
+            const parsed = parseAdvancedDependency(depSpec);
+            // Validate not self-referential
+            if (parsed.relatedProjectId === result.id) {
+              console.error(`\n⚠️  Warning: Skipping self-referential dependency in "${depSpec}"`);
+              continue;
+            }
+            dependenciesToCreate.push({
+              relatedProjectId: parsed.relatedProjectId,
+              anchorType: parsed.anchorType,
+              relatedAnchorType: parsed.relatedAnchorType,
+              type: 'advanced',
+            });
+          } catch (error) {
+            console.error(`\n❌ Error parsing --dependency "${depSpec}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+      }
+
+      // Create all dependencies
+      if (dependenciesToCreate.length > 0) {
+        console.log(`\n🔗 Creating ${dependenciesToCreate.length} project dependenc${dependenciesToCreate.length === 1 ? 'y' : 'ies'}...`);
+
+        const successfulDeps: string[] = [];
+        const failedDeps: Array<{ project: string; error: string }> = [];
+
+        for (const dep of dependenciesToCreate) {
+          try {
+            const relation = await createProjectRelation(client, {
+              type: 'dependency',
+              projectId: result.id,
+              relatedProjectId: dep.relatedProjectId,
+              anchorType: dep.anchorType,
+              relatedAnchorType: dep.relatedAnchorType,
+            });
+
+            const typeLabel = dep.type === 'depends-on' ? 'depends on' :
+                             dep.type === 'blocks' ? 'blocks' :
+                             `${dep.anchorType}→${dep.relatedAnchorType}`;
+            console.log(`   ✓ Dependency created: ${typeLabel} ${relation.relatedProject.name}`);
+            successfulDeps.push(relation.relatedProject.name);
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            failedDeps.push({
+              project: dep.relatedProjectId,
+              error: errorMsg,
+            });
+
+            // Check if it's a duplicate error (friendly message)
+            if (errorMsg.includes('Relation exists') || errorMsg.includes('already exists')) {
+              console.log(`   ⚠️  Dependency already exists with ${dep.relatedProjectId}`);
+            } else {
+              console.error(`   ✗ Failed to create dependency with ${dep.relatedProjectId}: ${errorMsg}`);
+            }
+          }
+        }
+
+        // Summary
+        if (failedDeps.length > 0) {
+          console.log(`\n✅ Created ${successfulDeps.length} of ${dependenciesToCreate.length} dependencies`);
+          if (failedDeps.some(f => !f.error.includes('Relation exists') && !f.error.includes('already exists'))) {
+            console.log(`\n💡 Tip: Fix failed dependencies with:`);
+            console.log(`   linear-create project dependencies add ${result.id} --depends-on <project-id>`);
           }
         }
       }

@@ -1,6 +1,7 @@
 import { LinearClient as SDKClient } from '@linear/sdk';
 import { getApiKey } from './config.js';
-import type { ProjectListFilters, ProjectListItem } from './types.js';
+import type { ProjectListFilters, ProjectListItem, ProjectRelation, ProjectRelationCreateInput } from './types.js';
+import { getRelationDirection } from './parsers.js';
 
 export class LinearClientError extends Error {
   constructor(message: string) {
@@ -608,6 +609,21 @@ export async function resolveMemberIdentifier(
  * Get all projects from Linear with comprehensive filtering (M20)
  * @param filters - Optional filters to apply (team, initiative, status, priority, lead, members, labels, dates, search)
  */
+/**
+ * Get all projects with optional filtering
+ *
+ * Performance Optimization (M21 Extended):
+ * - Conditional fetching: Only fetch labels/members if used for filtering
+ * - Two-query approach: Minimal query + optional batch query for labels/members
+ * - In-code join to combine results
+ * - API call reduction:
+ *   - No filters: 1 call (was 1+N)
+ *   - With label/member filters: 2 calls (was 1+N)
+ *   - Overall: 92-98% reduction in API calls
+ *
+ * @param filters - Optional filters for projects
+ * @returns Array of project list items
+ */
 export async function getAllProjects(filters?: ProjectListFilters): Promise<ProjectListItem[]> {
   try {
     const client = getLinearClient();
@@ -616,15 +632,15 @@ export async function getAllProjects(filters?: ProjectListFilters): Promise<Proj
     const graphqlFilter: any = {};
 
     if (filters?.teamId) {
-      graphqlFilter.team = { id: { eq: filters.teamId } };
+      graphqlFilter.accessibleTeams = { some: { id: { eq: filters.teamId } } };
     }
 
     if (filters?.initiativeId) {
-      graphqlFilter.initiative = { id: { eq: filters.initiativeId } };
+      graphqlFilter.initiatives = { some: { id: { eq: filters.initiativeId } } };
     }
 
     if (filters?.statusId) {
-      graphqlFilter.projectStatus = { id: { eq: filters.statusId } };
+      graphqlFilter.status = { id: { eq: filters.statusId } };
     }
 
     if (filters?.priority !== undefined) {
@@ -666,32 +682,261 @@ export async function getAllProjects(filters?: ProjectListFilters): Promise<Proj
 
     // Text search (search in name, description, content)
     if (filters?.search) {
-      graphqlFilter.or = [
-        { name: { containsIgnoreCase: filters.search } },
-        { description: { containsIgnoreCase: filters.search } },
-        { content: { containsIgnoreCase: filters.search } }
-      ];
+      const searchTerm = filters.search.trim();
+      if (searchTerm.length > 0) {
+        graphqlFilter.or = [
+          { name: { containsIgnoreCase: searchTerm } },
+          { slugId: { containsIgnoreCase: searchTerm } },
+          { searchableContent: { contains: searchTerm } }
+        ];
+      }
     }
 
-    // Fetch projects with all relations
-    const projects = await client.projects({
-      filter: Object.keys(graphqlFilter).length > 0 ? graphqlFilter : undefined,
-      includeArchived: false
-    });
+    if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+      console.error('[linear-create] Project filter:', JSON.stringify(graphqlFilter, null, 2));
+    }
 
-    // Map to ProjectListItem format
-    const projectList: ProjectListItem[] = [];
+    // Determine what data needs to be fetched based on filters
+    // CURRENT: Only fetch labels/members if they're used in FILTERS
+    // FUTURE ENHANCEMENT: Also conditionally fetch based on OUTPUT format
+    //   - If output doesn't need members/labels, skip Query 2 entirely
+    //   - Would require passing output format context to this function
+    const needsLabels = !!filters?.labelIds && filters.labelIds.length > 0;
+    const needsMembers = !!filters?.memberIds && filters.memberIds.length > 0;
+    const needsDependencies = !!filters?.includeDependencies; // M23
+    const needsAdditionalData = needsLabels || needsMembers;
 
-    for (const project of projects.nodes) {
-      // Get team (projects can belong to multiple teams, get the first one)
-      const teams = await project.teams();
-      const team = teams.nodes[0];
+    if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+      console.error('[linear-create] Conditional fetch:', { needsLabels, needsMembers, needsAdditionalData });
+    }
 
-      const lead = await project.lead;
-      const labels = await project.labels();
-      const members = await project.members();
+    // ========================================
+    // PAGINATION SETUP (M21.1)
+    // ========================================
+    // Determine page size based on fetchAll flag:
+    // - If --all: use 250 (max) for optimal performance (5x faster)
+    // - Otherwise: use limit (capped at 250)
+    const pageSize = filters?.fetchAll ? 250 : Math.min(filters?.limit || 50, 250);
+    const fetchAll = filters?.fetchAll || false;
+    const targetLimit = filters?.limit || 50;
 
-      projectList.push({
+    if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+      console.error('[linear-create] Pagination:', { pageSize, fetchAll, targetLimit });
+    }
+
+    // QUERY 1: Minimal - Always fetch core project data (projects, teams, leads)
+    // M23: Conditionally include relations if dependencies are requested
+    const relationsFragment = needsDependencies ? `
+            relations {
+              nodes {
+                id
+                type
+                anchorType
+                relatedAnchorType
+                project { id }
+                relatedProject { id }
+              }
+            }` : '';
+
+    const minimalQuery = `
+      query GetMinimalProjects($filter: ProjectFilter, $includeArchived: Boolean, $first: Int, $after: String) {
+        projects(filter: $filter, includeArchived: $includeArchived, first: $first, after: $after) {
+          nodes {
+            id
+            name
+            description
+            content
+            icon
+            color
+            state
+            priority
+            startDate
+            targetDate
+            completedAt
+            url
+            createdAt
+            updatedAt
+
+            teams {
+              nodes {
+                id
+                name
+                key
+              }
+            }
+
+            lead {
+              id
+              name
+              email
+            }
+${relationsFragment}
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    // ========================================
+    // PAGINATION LOOP (M21.1)
+    // ========================================
+    // Fetch pages until:
+    // - No more pages (hasNextPage = false), OR
+    // - Reached target limit (if not fetchAll)
+    let rawProjects: any[] = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+    let pageCount = 0;
+
+    while (hasNextPage && (fetchAll || rawProjects.length < targetLimit)) {
+      pageCount++;
+
+      const variables = {
+        filter: Object.keys(graphqlFilter).length > 0 ? graphqlFilter : null,
+        includeArchived: false,
+        first: pageSize,
+        after: cursor
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const minimalResponse: any = await client.client.rawRequest(minimalQuery, variables);
+
+      const nodes = minimalResponse.data?.projects?.nodes || [];
+      const pageInfo = minimalResponse.data?.projects?.pageInfo;
+
+      rawProjects.push(...nodes);
+
+      hasNextPage = pageInfo?.hasNextPage || false;
+      cursor = pageInfo?.endCursor || null;
+
+      if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+        console.error(`[linear-create] Page ${pageCount}: fetched ${nodes.length} projects (total: ${rawProjects.length}, hasNextPage: ${hasNextPage})`);
+      }
+
+      // If not fetching all, stop when we have enough
+      if (!fetchAll && rawProjects.length >= targetLimit) {
+        break;
+      }
+    }
+
+    // ========================================
+    // QUERY 2: CONDITIONAL - Batch fetch labels+members IF filters use them
+    // ========================================
+    // This query only runs if:
+    //   - filters.labelIds is set (filtering by labels), OR
+    //   - filters.memberIds is set (filtering by members)
+    //
+    // Strategy:
+    //   1. Build a single batch GraphQL query for ALL projects
+    //   2. Fetch both labels AND members in ONE API call (not N calls)
+    //   3. Store results in Maps keyed by project ID
+    //   4. Perform in-code join when building final project list
+    //
+    // Result: If no label/member filters → 1 API call total (was 1+N)
+    //         If label/member filters → 2 API calls total (was 1+N)
+    //
+    // FUTURE ENHANCEMENT: Also check if output format needs labels/members
+    //   - e.g., if --format=table doesn't show members column, skip fetching
+    //   - Would save Query 2 even more often
+    // ========================================
+    const labelsMap: Map<string, any[]> = new Map();
+    const membersMap: Map<string, any[]> = new Map();
+
+    if (needsAdditionalData && rawProjects.length > 0) {
+      const projectIds = rawProjects.map((p: any) => p.id);
+
+      // Build batch query for all projects
+      // Note: We fetch both labels AND members in ONE query to minimize API calls
+      const batchQuery = `
+        query GetProjectsLabelsAndMembers($ids: [String!]!) {
+          ${projectIds.map((id: string, index: number) => `
+            project${index}: project(id: "${id}") {
+              id
+              labels {
+                nodes {
+                  id
+                  name
+                  color
+                }
+              }
+              members {
+                nodes {
+                  id
+                  name
+                  email
+                }
+              }
+            }
+          `).join('\n')}
+        }
+      `;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const batchResponse: any = await client.client.rawRequest(batchQuery, {});
+
+      if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+        console.error('[linear-create] Batch query fetched labels+members for', projectIds.length, 'projects');
+      }
+
+      // Parse batch response and build maps for in-code join
+      projectIds.forEach((projectId: string, index: number) => {
+        const projectData = batchResponse.data?.[`project${index}`];
+        if (projectData) {
+          labelsMap.set(projectId, projectData.labels?.nodes || []);
+          membersMap.set(projectId, projectData.members?.nodes || []);
+        }
+      });
+    }
+
+    // ========================================
+    // IN-CODE JOIN: Merge Query 1 (projects) + Query 2 (labels/members)
+    // ========================================
+    // TRUNCATION (M21.1)
+    // ========================================
+    // If not fetching all pages, truncate to target limit
+    if (!fetchAll && rawProjects.length > targetLimit) {
+      if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+        console.error(`[linear-create] Truncating from ${rawProjects.length} to ${targetLimit} projects`);
+      }
+      rawProjects = rawProjects.slice(0, targetLimit);
+    }
+
+    // ========================================
+    // BUILD FINAL PROJECT LIST (IN-CODE JOIN)
+    // ========================================
+    // Build final project list by joining data from both queries
+    const projectList: ProjectListItem[] = rawProjects.map((project: any) => {
+      const labels = labelsMap.get(project.id) || [];
+      const members = membersMap.get(project.id) || [];
+
+      // M23: Calculate dependency counts if relations were fetched
+      let dependsOnCount: number | undefined = undefined;
+      let blocksCount: number | undefined = undefined;
+
+      if (needsDependencies && project.relations?.nodes) {
+        const relations = project.relations.nodes;
+
+        dependsOnCount = relations.filter((rel: any) => {
+          try {
+            return getRelationDirection(rel, project.id) === 'depends-on';
+          } catch {
+            return false;
+          }
+        }).length;
+
+        blocksCount = relations.filter((rel: any) => {
+          try {
+            return getRelationDirection(rel, project.id) === 'blocks';
+          } catch {
+            return false;
+          }
+        }).length;
+      }
+
+      return {
         id: project.id,
         name: project.name,
         description: project.description || undefined,
@@ -703,41 +948,45 @@ export async function getAllProjects(filters?: ProjectListFilters): Promise<Proj
 
         status: undefined, // Project status is not available in Linear SDK v27+
 
-        lead: lead ? {
-          id: lead.id,
-          name: lead.name,
-          email: lead.email
+        lead: project.lead ? {
+          id: project.lead.id,
+          name: project.lead.name,
+          email: project.lead.email
         } : undefined,
 
-        team: team ? {
-          id: team.id,
-          name: team.name,
-          key: team.key
+        team: project.teams?.nodes?.[0] ? {
+          id: project.teams.nodes[0].id,
+          name: project.teams.nodes[0].name,
+          key: project.teams.nodes[0].key
         } : undefined,
 
         initiative: undefined, // Initiative relationship needs to be fetched differently
 
-        labels: labels.nodes.map(label => ({
+        labels: labels.map((label: any) => ({
           id: label.id,
           name: label.name,
           color: label.color || undefined
         })),
 
-        members: members.nodes.map(member => ({
+        members: members.map((member: any) => ({
           id: member.id,
           name: member.name,
           email: member.email
         })),
 
-        startDate: project.startDate ? (typeof project.startDate === 'string' ? project.startDate : project.startDate.toISOString().split('T')[0]) : undefined,
-        targetDate: project.targetDate ? (typeof project.targetDate === 'string' ? project.targetDate : project.targetDate.toISOString().split('T')[0]) : undefined,
-        completedAt: project.completedAt ? (typeof project.completedAt === 'string' ? project.completedAt : project.completedAt.toISOString()) : undefined,
+        startDate: project.startDate || undefined,
+        targetDate: project.targetDate || undefined,
+        completedAt: project.completedAt || undefined,
 
         url: project.url,
-        createdAt: typeof project.createdAt === 'string' ? project.createdAt : project.createdAt.toISOString(),
-        updatedAt: typeof project.updatedAt === 'string' ? project.updatedAt : project.updatedAt.toISOString()
-      });
-    }
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+
+        // M23: Include dependency counts if fetched
+        dependsOnCount,
+        blocksCount
+      };
+    });
 
     return projectList;
   } catch (error) {
@@ -2332,6 +2581,178 @@ export async function deleteExternalLink(id: string): Promise<boolean> {
 
     throw new Error(
       `Failed to delete external link: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * M23: Project Dependency Management
+ *
+ * Create a project relation (dependency)
+ * Note: Linear API uses type: "dependency" with anchor-based semantics
+ * - anchorType: which part of source project ("start" or "end")
+ * - relatedAnchorType: which part of target project ("start" or "end")
+ */
+export async function createProjectRelation(
+  client: SDKClient,
+  input: ProjectRelationCreateInput
+): Promise<ProjectRelation> {
+  try {
+    // GraphQL mutation with inline fragment for ProjectRelation fields
+    const mutation = `
+      mutation CreateProjectRelation($input: ProjectRelationCreateInput!) {
+        projectRelationCreate(input: $input) {
+          success
+          projectRelation {
+            id
+            type
+            anchorType
+            relatedAnchorType
+            createdAt
+            updatedAt
+            project {
+              id
+              name
+            }
+            relatedProject {
+              id
+              name
+            }
+          }
+        }
+      }
+    `;
+
+    const result = await client.client.rawRequest(mutation, {
+      input: {
+        type: 'dependency', // Always "dependency" (only valid value)
+        projectId: input.projectId,
+        relatedProjectId: input.relatedProjectId,
+        anchorType: input.anchorType,
+        relatedAnchorType: input.relatedAnchorType,
+      },
+    });
+
+    const data = result.data as {
+      projectRelationCreate: {
+        success: boolean;
+        projectRelation: ProjectRelation;
+      };
+    };
+
+    if (!data.projectRelationCreate.success) {
+      throw new Error('Failed to create project relation');
+    }
+
+    return data.projectRelationCreate.projectRelation;
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to create project relation: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Delete a project relation by ID
+ */
+export async function deleteProjectRelation(
+  client: SDKClient,
+  relationId: string
+): Promise<boolean> {
+  try {
+    const mutation = `
+      mutation DeleteProjectRelation($id: String!) {
+        projectRelationDelete(id: $id) {
+          success
+        }
+      }
+    `;
+
+    const result = await client.client.rawRequest(mutation, {
+      id: relationId,
+    });
+
+    const data = result.data as {
+      projectRelationDelete: {
+        success: boolean;
+      };
+    };
+
+    return data.projectRelationDelete.success;
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to delete project relation: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Fetch all project relations for a given project
+ * Returns both "depends on" and "blocks" relations
+ */
+export async function getProjectRelations(
+  client: SDKClient,
+  projectId: string
+): Promise<ProjectRelation[]> {
+  try {
+    // Query to fetch project relations using the .relations() method
+    const query = `
+      query GetProjectRelations($projectId: String!) {
+        project(id: $projectId) {
+          id
+          name
+          relations {
+            nodes {
+              id
+              type
+              anchorType
+              relatedAnchorType
+              createdAt
+              updatedAt
+              project {
+                id
+                name
+              }
+              relatedProject {
+                id
+                name
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const result = await client.client.rawRequest(query, {
+      projectId,
+    });
+
+    const data = result.data as {
+      project: {
+        id: string;
+        name: string;
+        relations: {
+          nodes: ProjectRelation[];
+        };
+      };
+    };
+
+    return data.project.relations.nodes;
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to fetch project relations: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

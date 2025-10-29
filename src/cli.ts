@@ -73,7 +73,7 @@ const cli = new Command();
 cli
   .name('linear-create')
   .description('Command-line tool for creating Linear issues and projects')
-  .version('0.19.0')
+  .version('0.20.2')
   .action(() => {
     cli.help();
   });
@@ -204,6 +204,9 @@ project
       .argParser(parseInt)
   )
   .option('--members <ids>', 'Comma-separated member user IDs (e.g., user_1,user_2)')
+  .option('--depends-on <projects>', 'Projects this depends on (comma-separated IDs/aliases) - end→start anchor')
+  .option('--blocks <projects>', 'Projects this blocks (comma-separated IDs/aliases) - creates dependencies where other projects depend on this')
+  .option('--dependency <spec>', 'Advanced: "project:myAnchor:theirAnchor" (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
   .addHelpText('after', `
 Examples:
   Basic (auto-assigns you as lead):
@@ -243,6 +246,16 @@ Examples:
   $ linear-create project create --title "API Project" --team team_abc123 \\
       --content-file ./project-plan.md
 
+  With dependencies (simple mode):
+  $ linear-create project create --title "Frontend App" --team team_abc123 \\
+      --depends-on "api-backend,infrastructure" \\
+      --blocks "testing,deployment"
+
+  With dependencies (advanced mode - custom anchors):
+  $ linear-create project create --title "API v2" --team team_abc123 \\
+      --dependency "backend-infra:end:start" \\
+      --dependency "database-migration:start:end"
+
   Interactive mode:
   $ linear-create project create --interactive
 
@@ -263,6 +276,9 @@ Field Value Formats:
   --target-date     2025-12-31 (YYYY-MM-DD)
   --priority        0=None, 1=Urgent, 2=High, 3=Normal, 4=Low
   --*-resolution    month | quarter | halfYear | year
+  --depends-on      proj1,proj2 (my end waits for their start)
+  --blocks          proj1,proj2 (their end waits for my start)
+  --dependency      project:myAnchor:theirAnchor (advanced: start|end)
 
 Note: Set defaults with config:
   $ linear-create config set defaultProjectTemplate template_abc123
@@ -311,6 +327,12 @@ project
   .addOption(new Option('--target-date-resolution <resolution>', 'Target date resolution').choices(['month', 'quarter', 'halfYear', 'year']))
   .option('--link <url-and-label>', 'Add external link as "URL" or "URL|Label" (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
   .option('--remove-link <url>', 'Remove external link by exact URL match (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
+  .option('--depends-on <projects>', 'Add "depends on" relations (comma-separated IDs/aliases)')
+  .option('--blocks <projects>', 'Add "blocks" relations (comma-separated IDs/aliases)')
+  .option('--dependency <spec>', 'Add dependency: "project:myAnchor:theirAnchor" (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
+  .option('--remove-depends-on <projects>', 'Remove "depends on" relations (comma-separated IDs/aliases)')
+  .option('--remove-blocks <projects>', 'Remove "blocks" relations (comma-separated IDs/aliases)')
+  .option('--remove-dependency <project>', 'Remove all dependencies with project (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
   .option('-w, --web', 'Open project in browser after update')
   .addHelpText('after', `
 Examples:
@@ -328,6 +350,12 @@ Examples:
   $ linear-create proj update "My Project" --link "https://github.com/org/repo|GitHub"
   $ linear-create proj update "My Project" --remove-link "https://old-link.com"
   $ linear-create proj update "My Project" --link "https://new.com|New" --remove-link "https://old.com"
+
+  Manage dependencies:
+  $ linear-create proj update "My Project" --depends-on "api-backend,infrastructure"
+  $ linear-create proj update "My Project" --blocks "frontend-app"
+  $ linear-create proj update "My Project" --remove-depends-on "old-dep"
+  $ linear-create proj update "My Project" --dependency "backend:end:start" --remove-depends-on "old-project"
 
   Open in browser after update:
   $ linear-create proj update "My Project" --priority 1 --web
@@ -352,6 +380,131 @@ Note: Set default template with:
 `)
   .action(async (projectId: string, options) => {
     await addMilestones(projectId, options);
+  });
+
+// M23: Project Dependencies subcommands
+const projectDeps = project
+  .command('dependencies')
+  .alias('deps')
+  .description('Manage project dependencies (depends-on/blocks relations)')
+  .action(() => {
+    projectDeps.help();
+  });
+
+projectDeps
+  .command('add <name-or-id>')
+  .description('Add dependency relations to a project')
+  .option('--depends-on <projects>', 'Projects this depends on (comma-separated IDs/aliases) - end→start anchor')
+  .option('--blocks <projects>', 'Projects this blocks (comma-separated IDs/aliases) - start→end anchor')
+  .option('--dependency <spec>', 'Advanced: "project:myAnchor:theirAnchor" (repeatable)', (value, previous: string[] = []) => [...previous, value], [])
+  .addHelpText('after', `
+Examples:
+  Simple mode (default anchors):
+  $ linear-create project dependencies add "My Project" --depends-on "backend,database"
+  $ linear-create proj deps add PRJ-123 --blocks "frontend,mobile"
+
+  Advanced mode (custom anchors):
+  $ linear-create project deps add "API v2" --dependency "backend:end:start" --dependency "db:start:end"
+
+  Mixed mode:
+  $ linear-create proj deps add myproject --depends-on "backend" --dependency "db:start:start"
+
+Note:
+  - --depends-on: Creates end→start relation (my end waits for their start)
+  - --blocks: Creates start→end relation (their end waits for my start)
+  - --dependency: Custom anchors (start|end)
+  - Supports project IDs, names, and aliases
+  - Self-referential dependencies are automatically skipped
+`)
+  .action(async (nameOrId: string, options) => {
+    const { addProjectDependencies } = await import('./commands/project/dependencies/add.js');
+    await addProjectDependencies(nameOrId, options);
+  });
+
+projectDeps
+  .command('remove <name-or-id>')
+  .description('Remove dependency relations from a project')
+  .option('--depends-on <projects>', 'Remove "depends on" relations (comma-separated IDs/aliases)')
+  .option('--blocks <projects>', 'Remove "blocks" relations (comma-separated IDs/aliases)')
+  .option('--relation-id <id>', 'Remove by specific relation ID')
+  .option('--with <project>', 'Remove all relations with specified project')
+  .addHelpText('after', `
+Examples:
+  Remove by direction:
+  $ linear-create project dependencies remove "My Project" --depends-on "backend"
+  $ linear-create proj deps remove PRJ-123 --blocks "frontend,mobile"
+
+  Remove by relation ID:
+  $ linear-create proj deps remove "API v2" --relation-id "rel_abc123"
+
+  Remove all relations with a project:
+  $ linear-create project deps remove myproject --with "backend"
+
+  Mixed removal:
+  $ linear-create proj deps remove PRJ-123 --depends-on "backend" --blocks "frontend"
+
+Note:
+  - Provide at least one flag (--depends-on, --blocks, --relation-id, or --with)
+  - Use "list" command to find relation IDs
+`)
+  .action(async (nameOrId: string, options) => {
+    const { removeProjectDependencies } = await import('./commands/project/dependencies/remove.js');
+    await removeProjectDependencies(nameOrId, options);
+  });
+
+projectDeps
+  .command('list <name-or-id>')
+  .alias('ls')
+  .description('List all dependency relations for a project')
+  .option('--direction <type>', 'Filter by direction: depends-on | blocks')
+  .addHelpText('after', `
+Examples:
+  List all dependencies:
+  $ linear-create project dependencies list "My Project"
+  $ linear-create proj deps ls PRJ-123
+
+  Filter by direction:
+  $ linear-create proj deps list "API v2" --direction depends-on
+  $ linear-create project deps ls myproject --direction blocks
+
+Output:
+  Shows both "depends-on" and "blocks" relations with:
+  - Related project names and IDs
+  - Anchor types (start/end)
+  - Semantic descriptions
+  - Relation IDs (for removal)
+`)
+  .action(async (nameOrId: string, options) => {
+    const { listProjectDependencies } = await import('./commands/project/dependencies/list.js');
+    await listProjectDependencies(nameOrId, options);
+  });
+
+projectDeps
+  .command('clear <name-or-id>')
+  .description('Remove all dependency relations from a project')
+  .option('--direction <type>', 'Clear only specified direction: depends-on | blocks')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .addHelpText('after', `
+Examples:
+  Clear all dependencies (with confirmation):
+  $ linear-create project dependencies clear "My Project"
+  $ linear-create proj deps clear PRJ-123
+
+  Clear specific direction:
+  $ linear-create proj deps clear "API v2" --direction depends-on
+  $ linear-create project deps clear myproject --direction blocks
+
+  Skip confirmation:
+  $ linear-create proj deps clear PRJ-123 --yes
+  $ linear-create project deps clear myproject --direction depends-on -y
+
+Warning:
+  This permanently deletes dependency relations. Use with caution.
+  Confirmation prompt shown unless --yes flag is provided.
+`)
+  .action(async (nameOrId: string, options) => {
+    const { clearProjectDependencies } = await import('./commands/project/dependencies/clear.js');
+    await clearProjectDependencies(nameOrId, options);
   });
 
 // Register project list command (M20)

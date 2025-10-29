@@ -86,6 +86,48 @@ export async function viewProject(nameOrId: string, options: { web?: boolean; au
       }
     }
 
+    // M23: Display dependencies
+    try {
+      const { getLinearClient, getProjectRelations } = await import('../../lib/linear-client.js');
+      const { getRelationDirection } = await import('../../lib/parsers.js');
+      const client = getLinearClient();
+
+      const relations = await getProjectRelations(client, resolvedId);
+
+      if (relations.length > 0) {
+        // Group by direction
+        const dependsOn = relations.filter(rel => getRelationDirection(rel, resolvedId) === 'depends-on');
+        const blocks = relations.filter(rel => getRelationDirection(rel, resolvedId) === 'blocks');
+
+        console.log(`\n🔗 Dependencies:`);
+
+        if (dependsOn.length > 0) {
+          console.log(`   ⬅️  Depends On (${dependsOn.length}):`);
+          for (const rel of dependsOn) {
+            const targetProject = rel.project.id === resolvedId ? rel.relatedProject : rel.project;
+            const anchorDesc = `[${rel.anchorType} → ${rel.relatedAnchorType}]`;
+            console.log(`      • ${targetProject.name} (${targetProject.id})`);
+            console.log(`        ${anchorDesc} ${rel.anchorType === 'end' && rel.relatedAnchorType === 'start' ? 'My end waits for their start' : 'Custom anchor configuration'}`);
+          }
+        }
+
+        if (blocks.length > 0) {
+          console.log(`   ➡️  Blocks (${blocks.length}):`);
+          for (const rel of blocks) {
+            const targetProject = rel.project.id === resolvedId ? rel.relatedProject : rel.project;
+            const anchorDesc = `[${rel.anchorType} → ${rel.relatedAnchorType}]`;
+            console.log(`      • ${targetProject.name} (${targetProject.id})`);
+            console.log(`        ${anchorDesc} ${rel.anchorType === 'start' && rel.relatedAnchorType === 'end' ? 'Their end waits for my start' : 'Custom anchor configuration'}`);
+          }
+        }
+      } else {
+        console.log(`\n🔗 Dependencies: None`);
+      }
+    } catch (error) {
+      // Silently skip dependency display if there's an error
+      console.error(`   ⚠️  Could not load dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
     console.log();
   } catch (error) {
     console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');

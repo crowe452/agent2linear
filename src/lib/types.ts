@@ -173,6 +173,13 @@ export interface ProjectListFilters {
   targetDateAfter?: string;
   targetDateBefore?: string;
   search?: string;
+
+  // Pagination options (M21.1)
+  limit?: number;      // Max results to return (default: 50, max: 250)
+  fetchAll?: boolean;  // Fetch all pages (uses pageSize: 250 for optimization)
+
+  // M23: Dependency options
+  includeDependencies?: boolean;  // Fetch dependency relation counts
 }
 
 /**
@@ -222,4 +229,49 @@ export interface ProjectListItem {
   url: string;
   createdAt: string;
   updatedAt: string;
+  dependsOnCount?: number;    // Count of "depends on" relations (M23)
+  blocksCount?: number;       // Count of "blocks" relations (M23)
+}
+
+/**
+ * Project Relation data structure (M23: Project Dependencies)
+ * Represents a dependency relationship between two projects
+ */
+export interface ProjectRelation {
+  id: string;
+  type: 'dependency';  // Only valid value in Linear API
+  project: {
+    id: string;
+    name: string;
+  };
+  relatedProject: {
+    id: string;
+    name: string;
+  };
+  anchorType: 'start' | 'end';        // Which part of source project
+  relatedAnchorType: 'start' | 'end'; // Which part of target project
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Input for creating a project relation (M23)
+ */
+export interface ProjectRelationCreateInput {
+  id?: string;
+  type: 'dependency';  // Always this value
+  projectId: string;
+  relatedProjectId: string;
+  anchorType: 'start' | 'end';
+  relatedAnchorType: 'start' | 'end';
+}
+
+/**
+ * Parsed dependency with direction (M23)
+ * Used for advanced dependency syntax parsing
+ */
+export interface DependencyDirection {
+  relatedProjectId: string;
+  anchorType: 'start' | 'end';
+  relatedAnchorType: 'start' | 'end';
 }

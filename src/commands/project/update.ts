@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { resolveProject } from '../../lib/project-resolver.js';
 import { updateProject } from '../../lib/linear-client.js';
 import { showEntityNotFound, showError, showSuccess } from '../../lib/output.js';
+import { resolveAlias } from '../../lib/aliases.js';
 
 interface UpdateOptions {
   status?: string;
@@ -24,6 +25,18 @@ interface UpdateOptions {
   // M15 Phase 3: Date Resolutions
   startDateResolution?: 'month' | 'quarter' | 'halfYear' | 'year';
   targetDateResolution?: 'month' | 'quarter' | 'halfYear' | 'year';
+  // M16 Phase 1: Link Management
+  link?: string | string[];        // Adds new links
+  removeLink?: string | string[];  // Removes by URL exact match
+  // M16 Phase 2: Web Browser Mode
+  web?: boolean;
+  // M23: Dependency Management
+  dependsOn?: string;              // Add depends-on relations
+  blocks?: string;                 // Add blocks relations
+  dependency?: string[];           // Add advanced dependencies
+  removeDependsOn?: string;        // Remove depends-on relations
+  removeBlocks?: string;           // Remove blocks relations
+  removeDependency?: string[];     // Remove all dependencies with project
 }
 
 function validateDateFormat(date: string, fieldName: string): void {
@@ -86,16 +99,23 @@ export async function updateProjectCommand(nameOrId: string, options: UpdateOpti
 
     // Validate at least one field provided
     // Note: content === undefined (not !content) to allow empty string for clearing content
+    // Note: link/removeLink/dependency defaults to [] so check length instead of truthiness
     if (!options.status && !options.name && !options.description && content === undefined &&
         options.priority === undefined && !options.targetDate && !options.startDate &&
         !options.color && !options.icon && !options.lead && !options.members && !options.labels &&
-        !options.startDateResolution && !options.targetDateResolution) {
+        !options.startDateResolution && !options.targetDateResolution &&
+        (!options.link || options.link.length === 0) &&
+        (!options.removeLink || options.removeLink.length === 0) &&
+        !options.dependsOn && !options.blocks &&
+        (!options.dependency || options.dependency.length === 0) &&
+        !options.removeDependsOn && !options.removeBlocks &&
+        (!options.removeDependency || options.removeDependency.length === 0)) {
       showError(
         'No update fields provided',
         'Specify at least one field to update:\n' +
         '  --status, --name, --description, --content, --content-file, --priority,\n' +
         '  --target-date, --start-date, --color, --icon, --lead, --members, --labels,\n' +
-        '  --start-date-resolution, --target-date-resolution'
+        '  --start-date-resolution, --target-date-resolution, --link, --remove-link'
       );
       process.exit(1);
     }
@@ -325,12 +345,269 @@ export async function updateProjectCommand(nameOrId: string, options: UpdateOpti
 
     const result = await updateProject(projectId, updates);
 
+    // M16 Phase 1: External Link Management - Add Links
+    if (options.link) {
+      const { parsePipeDelimitedArray } = await import('../../lib/parsers.js');
+      const { createExternalLink } = await import('../../lib/linear-client.js');
+
+      const linkArgs = Array.isArray(options.link) ? options.link : [options.link];
+      const parsedLinks = parsePipeDelimitedArray(linkArgs);
+      const linksToCreate = parsedLinks.map(({ key, value }) => ({
+        url: key,
+        label: value || ''
+      }));
+
+      console.log(`\n🔗 Adding ${linksToCreate.length} external link(s)...`);
+
+      for (const { url, label } of linksToCreate) {
+        try {
+          await createExternalLink({
+            url,
+            label,
+            projectId,
+          });
+          console.log(`   ✓ Link added: ${label || url}`);
+        } catch (error) {
+          console.error(`   ✗ Failed to add link "${url}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+    }
+
+    // M16 Phase 1: External Link Management - Remove Links
+    if (options.removeLink) {
+      const { getProjectExternalLinks, deleteExternalLink } = await import('../../lib/linear-client.js');
+
+      const urlsToRemove = Array.isArray(options.removeLink)
+        ? options.removeLink
+        : [options.removeLink];
+
+      console.log(`\n🗑️  Removing ${urlsToRemove.length} link(s)...`);
+
+      // Fetch current links
+      const existingLinks = await getProjectExternalLinks(projectId);
+
+      for (const url of urlsToRemove) {
+        const link = existingLinks.find(l => l.url === url);
+
+        if (link) {
+          try {
+            await deleteExternalLink(link.id);
+            console.log(`   ✓ Removed link: ${link.label || url}`);
+          } catch (error) {
+            console.error(`   ✗ Failed to remove link "${url}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        } else {
+          console.warn(`   ⚠️  Link not found (skipped): ${url}`);
+        }
+      }
+    }
+
+    // M23: Dependency Management - Add dependencies
+    if (options.dependsOn || options.blocks || (options.dependency && options.dependency.length > 0)) {
+      const { getLinearClient, createProjectRelation } = await import('../../lib/linear-client.js');
+      const { resolveDependencyProjects, parseAdvancedDependency } = await import('../../lib/parsers.js');
+      const client = getLinearClient();
+
+      const dependenciesToCreate: Array<{
+        relatedProjectId: string;
+        anchorType: 'start' | 'end';
+        relatedAnchorType: 'start' | 'end';
+        type: 'depends-on' | 'blocks' | 'advanced';
+      }> = [];
+
+      // Parse --depends-on
+      if (options.dependsOn) {
+        try {
+          const projectIds = resolveDependencyProjects(options.dependsOn);
+          for (const relatedProjectId of projectIds) {
+            if (relatedProjectId === projectId) {
+              console.error(`\n⚠️  Warning: Skipping self-referential dependency`);
+              continue;
+            }
+            dependenciesToCreate.push({
+              relatedProjectId,
+              anchorType: 'end',
+              relatedAnchorType: 'start',
+              type: 'depends-on',
+            });
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --depends-on: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Parse --blocks
+      if (options.blocks) {
+        try {
+          const projectIds = resolveDependencyProjects(options.blocks);
+          for (const relatedProjectId of projectIds) {
+            if (relatedProjectId === projectId) {
+              console.error(`\n⚠️  Warning: Skipping self-referential dependency`);
+              continue;
+            }
+            dependenciesToCreate.push({
+              relatedProjectId,
+              anchorType: 'start',
+              relatedAnchorType: 'end',
+              type: 'blocks',
+            });
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --blocks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Parse --dependency (advanced)
+      if (options.dependency && options.dependency.length > 0) {
+        for (const depSpec of options.dependency) {
+          try {
+            const parsed = parseAdvancedDependency(depSpec);
+            if (parsed.relatedProjectId === projectId) {
+              console.error(`\n⚠️  Warning: Skipping self-referential dependency in "${depSpec}"`);
+              continue;
+            }
+            dependenciesToCreate.push({
+              relatedProjectId: parsed.relatedProjectId,
+              anchorType: parsed.anchorType,
+              relatedAnchorType: parsed.relatedAnchorType,
+              type: 'advanced',
+            });
+          } catch (error) {
+            console.error(`\n❌ Error parsing --dependency "${depSpec}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+      }
+
+      // Create dependencies
+      if (dependenciesToCreate.length > 0) {
+        console.log(`\n🔗 Adding ${dependenciesToCreate.length} dependenc${dependenciesToCreate.length === 1 ? 'y' : 'ies'}...`);
+
+        for (const dep of dependenciesToCreate) {
+          try {
+            const relation = await createProjectRelation(client, {
+              type: 'dependency',
+              projectId,
+              relatedProjectId: dep.relatedProjectId,
+              anchorType: dep.anchorType,
+              relatedAnchorType: dep.relatedAnchorType,
+            });
+
+            const typeLabel = dep.type === 'depends-on' ? 'depends on' :
+                             dep.type === 'blocks' ? 'blocks' :
+                             `${dep.anchorType}→${dep.relatedAnchorType}`;
+            console.log(`   ✓ Added: ${typeLabel} ${relation.relatedProject.name}`);
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            if (errorMsg.includes('Relation exists') || errorMsg.includes('already exists')) {
+              console.log(`   ⚠️  Dependency already exists with ${dep.relatedProjectId}`);
+            } else {
+              console.error(`   ✗ Failed: ${errorMsg}`);
+            }
+          }
+        }
+      }
+    }
+
+    // M23: Dependency Management - Remove dependencies
+    if (options.removeDependsOn || options.removeBlocks || (options.removeDependency && options.removeDependency.length > 0)) {
+      const { getLinearClient, getProjectRelations, deleteProjectRelation } = await import('../../lib/linear-client.js');
+      const { resolveDependencyProjects, getRelationDirection } = await import('../../lib/parsers.js');
+      const client = getLinearClient();
+
+      // Fetch existing relations
+      const existingRelations = await getProjectRelations(client, projectId);
+
+      const relationsToDelete: string[] = [];
+
+      // Remove --depends-on relations
+      if (options.removeDependsOn) {
+        try {
+          const targetProjectIds = resolveDependencyProjects(options.removeDependsOn);
+          for (const targetId of targetProjectIds) {
+            const matching = existingRelations.filter(rel => {
+              const direction = getRelationDirection(rel, projectId);
+              return direction === 'depends-on' &&
+                     (rel.project.id === projectId && rel.relatedProject.id === targetId);
+            });
+            relationsToDelete.push(...matching.map(r => r.id));
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --remove-depends-on: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Remove --blocks relations
+      if (options.removeBlocks) {
+        try {
+          const targetProjectIds = resolveDependencyProjects(options.removeBlocks);
+          for (const targetId of targetProjectIds) {
+            const matching = existingRelations.filter(rel => {
+              const direction = getRelationDirection(rel, projectId);
+              return direction === 'blocks' &&
+                     (rel.project.id === projectId && rel.relatedProject.id === targetId);
+            });
+            relationsToDelete.push(...matching.map(r => r.id));
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --remove-blocks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Remove all dependencies with specific projects
+      if (options.removeDependency && options.removeDependency.length > 0) {
+        try {
+          const targetProjectIds = options.removeDependency.map(id =>
+            resolveAlias('project', id)
+          );
+
+          for (const targetId of targetProjectIds) {
+            const matching = existingRelations.filter(rel =>
+              (rel.project.id === projectId && rel.relatedProject.id === targetId) ||
+              (rel.relatedProject.id === projectId && rel.project.id === targetId)
+            );
+            relationsToDelete.push(...matching.map(r => r.id));
+          }
+        } catch (error) {
+          console.error(`\n❌ Error parsing --remove-dependency: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Delete relations
+      if (relationsToDelete.length > 0) {
+        console.log(`\n🗑️  Removing ${relationsToDelete.length} dependenc${relationsToDelete.length === 1 ? 'y' : 'ies'}...`);
+
+        for (const relationId of relationsToDelete) {
+          try {
+            await deleteProjectRelation(client, relationId);
+            console.log(`   ✓ Removed dependency`);
+          } catch (error) {
+            console.error(`   ✗ Failed to remove: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+      } else {
+        console.log(`\n⚠️  No matching dependencies found to remove`);
+      }
+    }
+
     console.log('');
     showSuccess('Project updated successfully!', {
       'Name': result.name,
       'ID': result.id,
       'URL': result.url,
     });
+
+    // M16 Phase 2: Web Browser Mode
+    if (options.web) {
+      console.log('\n🌐 Opening project in browser...');
+      try {
+        const { openInBrowser } = await import('../../lib/browser.js');
+        await openInBrowser(result.url);
+        console.log('✓ Browser opened.');
+      } catch (error) {
+        console.error('⚠️  Could not open browser:', error instanceof Error ? error.message : 'Unknown error');
+        console.error(`   Please visit: ${result.url}`);
+      }
+    }
 
   } catch (error) {
     showError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

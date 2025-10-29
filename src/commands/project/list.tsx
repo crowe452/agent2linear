@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, Box, Text } from 'ink';
 import type { Command } from 'commander';
-import { getAllProjects, getCurrentUser } from '../../lib/linear-client.js';
+import { getAllProjects } from '../../lib/linear-client.js';
+import { getEntityCache } from '../../lib/entity-cache.js';
 import { showError } from '../../lib/output.js';
 import { getConfig } from '../../lib/config.js';
 import { resolveAlias } from '../../lib/aliases.js';
@@ -23,8 +24,9 @@ async function buildDefaultFilters(options: any): Promise<ProjectListFilters> {
       const leadId = resolveAlias('member', options.lead);
       filters.leadId = leadId;
     } else {
-      // Default: current user is the lead
-      const currentUser = await getCurrentUser();
+      // Default: current user is the lead (cached)
+      const cache = getEntityCache();
+      const currentUser = await cache.getCurrentUser();
       filters.leadId = currentUser.id;
     }
   }
@@ -123,50 +125,39 @@ function formatContentPreview(project: ProjectListItem): string {
 // ========================================
 // HELPER: Format table output
 // ========================================
-function formatTableOutput(projects: ProjectListItem[]): void {
+function formatTableOutput(projects: ProjectListItem[], showDependencies = false): void {
   if (projects.length === 0) {
     console.log('No projects found.');
     return;
   }
 
-  // Calculate column widths
-  const idWidth = 12;
-  const titleWidth = 30;
-  const statusWidth = 12;
-  const teamWidth = 15;
-  const leadWidth = 20;
-  const previewWidth = 60;
+  // Header - tab-separated (with optional dependency columns)
+  if (showDependencies) {
+    console.log('ID\tTitle\tStatus\tTeam\tLead\tDeps-On\tBlocks\tPreview');
+  } else {
+    console.log('ID\tTitle\tStatus\tTeam\tLead\tPreview');
+  }
 
-  // Header
-  console.log(
-    'ID'.padEnd(idWidth) +
-    'Title'.padEnd(titleWidth) +
-    'Status'.padEnd(statusWidth) +
-    'Team'.padEnd(teamWidth) +
-    'Lead'.padEnd(leadWidth) +
-    'Preview'
-  );
-  console.log('-'.repeat(idWidth + titleWidth + statusWidth + teamWidth + leadWidth + previewWidth));
-
-  // Rows
+  // Rows - tab-separated with full ID and Title (no truncation)
   for (const project of projects) {
-    const id = project.id.substring(0, 11);
-    const title = project.name.length > 28
-      ? project.name.substring(0, 27) + '…'
-      : project.name;
+    const id = project.id;
+    const title = project.name;
     const status = (project.status?.name || project.state || '').substring(0, 11);
     const team = (project.team?.name || '').substring(0, 14);
     const lead = (project.lead?.name || '').substring(0, 19);
     const preview = formatContentPreview(project);
 
-    console.log(
-      id.padEnd(idWidth) +
-      title.padEnd(titleWidth) +
-      status.padEnd(statusWidth) +
-      team.padEnd(teamWidth) +
-      lead.padEnd(leadWidth) +
-      preview
-    );
+    if (showDependencies) {
+      const depsOn = project.dependsOnCount !== undefined ? project.dependsOnCount.toString() : '0';
+      const blocks = project.blocksCount !== undefined ? project.blocksCount.toString() : '0';
+      console.log(
+        `${id}\t${title}\t${status}\t${team}\t${lead}\t${depsOn}\t${blocks}\t${preview}`
+      );
+    } else {
+      console.log(
+        `${id}\t${title}\t${status}\t${team}\t${lead}\t${preview}`
+      );
+    }
   }
 
   console.log(`\nTotal: ${projects.length} project${projects.length !== 1 ? 's' : ''}`);
@@ -182,9 +173,13 @@ function formatJSONOutput(projects: ProjectListItem[]): void {
 // ========================================
 // HELPER: Format TSV output
 // ========================================
-function formatTSVOutput(projects: ProjectListItem[]): void {
-  // Headers
-  console.log('ID\tTitle\tStatus\tTeam\tLead\tPreview');
+function formatTSVOutput(projects: ProjectListItem[], showDependencies = false): void {
+  // Headers (with optional dependency columns)
+  if (showDependencies) {
+    console.log('ID\tTitle\tStatus\tTeam\tLead\tDeps-On\tBlocks\tPreview');
+  } else {
+    console.log('ID\tTitle\tStatus\tTeam\tLead\tPreview');
+  }
 
   // Rows
   for (const project of projects) {
@@ -193,9 +188,17 @@ function formatTSVOutput(projects: ProjectListItem[]): void {
     const lead = project.lead?.name || '';
     const preview = formatContentPreview(project);
 
-    console.log(
-      `${project.id}\t${project.name}\t${status}\t${team}\t${lead}\t${preview}`
-    );
+    if (showDependencies) {
+      const depsOn = project.dependsOnCount !== undefined ? project.dependsOnCount.toString() : '0';
+      const blocks = project.blocksCount !== undefined ? project.blocksCount.toString() : '0';
+      console.log(
+        `${project.id}\t${project.name}\t${status}\t${team}\t${lead}\t${depsOn}\t${blocks}\t${preview}`
+      );
+    } else {
+      console.log(
+        `${project.id}\t${project.name}\t${status}\t${team}\t${lead}\t${preview}`
+      );
+    }
   }
 }
 
@@ -300,15 +303,29 @@ export function listProjectsCommand(program: Command): void {
     .option('--all-teams', 'Show projects from all teams (overrides default team)')
     .option('--all-initiatives', 'Show projects from all initiatives (overrides default initiative)')
 
+    // Pagination options (M21.1)
+    .option('--limit <number>', 'Maximum number of results to return (default: 50, max: 250)', '50')
+    .option('--all', 'Fetch all matching projects across all pages (may be slow)')
+
     // Output format
     .option('-f, --format <type>', 'Output format: table (default), json, tsv', 'table')
     .option('-I, --interactive', 'Interactive mode with Ink UI')
     .option('-w, --web', 'Open in web browser')
 
+    // M23: Dependency display
+    .option('--show-dependencies', 'Show dependency counts (depends-on/blocks)')
+
     .action(async (options) => {
       try {
         // Build filters with smart defaults
         const filters = await buildDefaultFilters(options);
+
+        // Add pagination options (M21.1)
+        filters.limit = parseInt(options.limit, 10);
+        filters.fetchAll = options.all || false;
+
+        // M23: Add dependency fetching flag
+        filters.includeDependencies = options.showDependencies || false;
 
         // Web mode - open in browser
         if (options.web) {
@@ -325,10 +342,10 @@ export function listProjectsCommand(program: Command): void {
           if (options.format === 'json') {
             formatJSONOutput(projects);
           } else if (options.format === 'tsv') {
-            formatTSVOutput(projects);
+            formatTSVOutput(projects, options.showDependencies);
           } else {
             // Default: table
-            formatTableOutput(projects);
+            formatTableOutput(projects, options.showDependencies);
           }
 
           process.exit(0);
@@ -337,7 +354,7 @@ export function listProjectsCommand(program: Command): void {
         // Handle table format without interactive
         if (options.format === 'table' && !options.interactive) {
           const projects = await getAllProjects(filters);
-          formatTableOutput(projects);
+          formatTableOutput(projects, options.showDependencies);
           process.exit(0);
         }
 
