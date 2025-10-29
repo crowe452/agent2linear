@@ -634,17 +634,17 @@ $ LINEAR_CREATE_DEBUG_FILTERS=1 linear-create project list --all-teams --all-lea
 - [x] [M23-TS13] Test dependencies list command (working with relation IDs)
 - [x] [M23-TS14] Test dependencies clear command (implemented with confirmation)
 
-**Phase 4: Enhance Project List (Modified: opt-in display, no filters)**
+**Phase 4: Enhance Project List (Completed v0.20.3)**
 - [x] [M23-T25] Update project list GraphQL query for dependency data (conditionally fetches relations)
 - [x] [M23-T26] Add --show-dependencies flag for opt-in dependency counts (Deps-On/Blocks columns)
-- [~] [M23-T27] Implement --has-dependencies filter (deferred - not in v0.20.2 scope)
-- [~] [M23-T28] Implement --no-dependencies filter (deferred - not in v0.20.2 scope)
-- [~] [M23-T29] Implement --depends-on-others filter (deferred - not in v0.20.2 scope)
-- [~] [M23-T30] Implement --blocks-others filter (deferred - not in v0.20.2 scope)
-- [~] [M23-T31] Add conflicting filter validation (deferred - not in v0.20.2 scope)
+- [x] [M23-T27] Implement --has-dependencies filter (client-side filtering)
+- [x] [M23-T28] Implement --without-dependencies filter (renamed from --no-dependencies to avoid commander.js conflict)
+- [x] [M23-T29] Implement --depends-on-others filter (client-side filtering)
+- [x] [M23-T30] Implement --blocks-others filter (client-side filtering)
+- [x] [M23-T31] Add conflicting filter validation (--has-dependencies vs --without-dependencies)
 - [x] [M23-TS15] Test list command with dependency display (working with --show-dependencies)
-- [~] [M23-TS16] Test list command filters (deferred to future milestone)
-- [~] [M23-TS17] Test conflicting filter validation (deferred to future milestone)
+- [x] [M23-TS16] Test list command filters (all 4 filters working correctly)
+- [x] [M23-TS17] Test conflicting filter validation (shows error message)
 
 **Phase 5: Alias Support & CLI Registration (2 tasks)**
 - [x] [M23-T32] Verify project alias support in aliases.ts (confirmed: resolveProject and resolveAlias used throughout)
@@ -764,9 +764,12 @@ linear-create project list --blocks-others
 - ✅ Full alias support for all project references
 - ✅ Comprehensive test script with 35+ test cases
 
-**What Was Deferred (Future Milestone):**
-- ⏭️ Dependency filter flags on project list (--has-dependencies, --no-dependencies, --depends-on-others, --blocks-others)
-- ⏭️ Always-on dependency columns in list output (implemented as opt-in --show-dependencies instead)
+**What Was Completed in v0.20.3 (Phase 4 Extended):**
+- ✅ Dependency filter flags on project list (--has-dependencies, --without-dependencies, --depends-on-others, --blocks-others)
+- ✅ Client-side filtering after GraphQL fetch (optimal performance)
+- ✅ Conflicting filter validation
+- ✅ Fixed: Initialize dependency counts to 0 when fetching (not undefined)
+- ✅ Fixed: Renamed --no-dependencies to --without-dependencies (commander.js conflict)
 
 **Files Modified:**
 - src/lib/types.ts (ProjectRelation interfaces, includeDependencies flag)

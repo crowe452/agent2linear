@@ -916,24 +916,31 @@ ${relationsFragment}
       let dependsOnCount: number | undefined = undefined;
       let blocksCount: number | undefined = undefined;
 
-      if (needsDependencies && project.relations?.nodes) {
-        const relations = project.relations.nodes;
+      if (needsDependencies) {
+        // Initialize to 0 when fetching dependencies
+        dependsOnCount = 0;
+        blocksCount = 0;
 
-        dependsOnCount = relations.filter((rel: any) => {
-          try {
-            return getRelationDirection(rel, project.id) === 'depends-on';
-          } catch {
-            return false;
-          }
-        }).length;
+        // Count relations if present
+        if (project.relations?.nodes) {
+          const relations = project.relations.nodes;
 
-        blocksCount = relations.filter((rel: any) => {
-          try {
-            return getRelationDirection(rel, project.id) === 'blocks';
-          } catch {
-            return false;
-          }
-        }).length;
+          dependsOnCount = relations.filter((rel: any) => {
+            try {
+              return getRelationDirection(rel, project.id) === 'depends-on';
+            } catch {
+              return false;
+            }
+          }).length;
+
+          blocksCount = relations.filter((rel: any) => {
+            try {
+              return getRelationDirection(rel, project.id) === 'blocks';
+            } catch {
+              return false;
+            }
+          }).length;
+        }
       }
 
       return {

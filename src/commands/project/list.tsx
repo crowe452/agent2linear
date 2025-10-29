@@ -101,6 +101,47 @@ async function buildDefaultFilters(options: any): Promise<ProjectListFilters> {
 }
 
 // ========================================
+// HELPER: Apply dependency filters (client-side)
+// ========================================
+function applyDependencyFilters(
+  projects: ProjectListItem[],
+  options: {
+    hasDependencies?: boolean;
+    withoutDependencies?: boolean;
+    dependsOnOthers?: boolean;
+    blocksOthers?: boolean;
+  }
+): ProjectListItem[] {
+  let filtered = projects;
+
+  // Filter: has any dependencies
+  if (options.hasDependencies) {
+    filtered = filtered.filter(p =>
+      (p.dependsOnCount || 0) + (p.blocksCount || 0) > 0
+    );
+  }
+
+  // Filter: without dependencies
+  if (options.withoutDependencies) {
+    filtered = filtered.filter(p =>
+      (p.dependsOnCount || 0) + (p.blocksCount || 0) === 0
+    );
+  }
+
+  // Filter: depends on others
+  if (options.dependsOnOthers) {
+    filtered = filtered.filter(p => (p.dependsOnCount || 0) > 0);
+  }
+
+  // Filter: blocks others
+  if (options.blocksOthers) {
+    filtered = filtered.filter(p => (p.blocksCount || 0) > 0);
+  }
+
+  return filtered;
+}
+
+// ========================================
 // HELPER: Format content preview
 // ========================================
 function formatContentPreview(project: ProjectListItem): string {
@@ -312,11 +353,24 @@ export function listProjectsCommand(program: Command): void {
     .option('-I, --interactive', 'Interactive mode with Ink UI')
     .option('-w, --web', 'Open in web browser')
 
-    // M23: Dependency display
+    // M23: Dependency display and filters
     .option('--show-dependencies', 'Show dependency counts (depends-on/blocks)')
+    .option('--has-dependencies', 'Filter: show only projects with any dependencies')
+    .option('--without-dependencies', 'Filter: show only projects with no dependencies')
+    .option('--depends-on-others', 'Filter: show only projects that depend on others')
+    .option('--blocks-others', 'Filter: show only projects that block others')
 
     .action(async (options) => {
       try {
+        // M23: Validate conflicting dependency filters
+        if (options.hasDependencies && options.withoutDependencies) {
+          showError(
+            'Conflicting filters',
+            'Cannot use --has-dependencies and --without-dependencies together'
+          );
+          process.exit(1);
+        }
+
         // Build filters with smart defaults
         const filters = await buildDefaultFilters(options);
 
@@ -325,7 +379,13 @@ export function listProjectsCommand(program: Command): void {
         filters.fetchAll = options.all || false;
 
         // M23: Add dependency fetching flag
-        filters.includeDependencies = options.showDependencies || false;
+        // Fetch dependencies if: showing them OR filtering by them
+        const needsDependencies = options.showDependencies ||
+                                 options.hasDependencies ||
+                                 options.withoutDependencies ||
+                                 options.dependsOnOthers ||
+                                 options.blocksOthers;
+        filters.includeDependencies = needsDependencies;
 
         // Web mode - open in browser
         if (options.web) {
@@ -337,7 +397,15 @@ export function listProjectsCommand(program: Command): void {
 
         // Non-interactive formats - handle synchronously before Ink
         if (options.format !== 'table' && !options.interactive) {
-          const projects = await getAllProjects(filters);
+          let projects = await getAllProjects(filters);
+
+          // M23: Apply dependency filters (client-side)
+          projects = applyDependencyFilters(projects, {
+            hasDependencies: options.hasDependencies,
+            withoutDependencies: options.withoutDependencies,
+            dependsOnOthers: options.dependsOnOthers,
+            blocksOthers: options.blocksOthers,
+          });
 
           if (options.format === 'json') {
             formatJSONOutput(projects);
@@ -353,7 +421,16 @@ export function listProjectsCommand(program: Command): void {
 
         // Handle table format without interactive
         if (options.format === 'table' && !options.interactive) {
-          const projects = await getAllProjects(filters);
+          let projects = await getAllProjects(filters);
+
+          // M23: Apply dependency filters (client-side)
+          projects = applyDependencyFilters(projects, {
+            hasDependencies: options.hasDependencies,
+            withoutDependencies: options.withoutDependencies,
+            dependsOnOthers: options.dependsOnOthers,
+            blocksOthers: options.blocksOthers,
+          });
+
           formatTableOutput(projects, options.showDependencies);
           process.exit(0);
         }
