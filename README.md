@@ -39,6 +39,62 @@ linear-create project create --title "My Project" --description "Description" --
 linear-create config show
 ```
 
+## Issue Commands
+
+Create and manage Linear issues with comprehensive options and smart defaults.
+
+### Issue Create
+
+Create issues with auto-assignment, full field support, and intelligent validation.
+
+**Basic Examples:**
+```bash
+# Minimal (auto-assigns to you, uses defaultTeam if configured)
+linear-create issue create --title "Fix login bug"
+
+# Standard creation
+linear-create issue create \
+  --title "Add OAuth support" \
+  --team backend \
+  --priority 2 \
+  --estimate 8
+
+# Full-featured
+linear-create issue create \
+  --title "Implement auth" \
+  --team backend \
+  --description "Add OAuth2 providers" \
+  --priority 1 \
+  --assignee john@company.com \
+  --labels "feature,security" \
+  --project "Q1 Goals" \
+  --due-date 2025-02-15
+```
+
+**Key Features:**
+- **Auto-assignment**: Issues are assigned to you by default (use `--no-assignee` to override)
+- **Member resolution**: Supports ID, alias, email, or display name
+- **Project resolution**: Supports ID, alias, or name lookup
+- **Config defaults**: Use `defaultTeam` and `defaultProject` to simplify creation
+- **Validation**: Team-aware validation for states and projects
+
+For full documentation: `linear-create issue create --help`
+
+### Issue View
+
+View comprehensive issue details in terminal or browser.
+
+```bash
+# View by identifier
+linear-create issue view ENG-123
+
+# View with JSON output
+linear-create issue view ENG-123 --json
+
+# Open in browser
+linear-create issue view ENG-123 --web
+```
+
 ## Project List & Search
 
 List and search projects with smart defaults and extensive filtering. The `project list` command provides intelligent defaults for common workflows while supporting comprehensive filtering options.

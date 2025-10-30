@@ -68,13 +68,14 @@ import { showCacheStats } from './commands/cache/stats.js';
 import { clearCache } from './commands/cache/clear.js';
 import { setup } from './commands/setup.js';
 import { viewIssue } from './commands/issue/view.js';
+import { createIssueCommand } from './commands/issue/create.js';
 
 const cli = new Command();
 
 cli
   .name('linear-create')
   .description('Command-line tool for creating Linear issues and projects')
-  .version('0.24.0-alpha.2')
+  .version('0.24.0-alpha.3')
   .action(() => {
     cli.help();
   });
@@ -1446,6 +1447,103 @@ Use --show-history to see the change history.
 `)
   .action(async (identifier, options) => {
     await viewIssue(identifier, options);
+  });
+
+issue
+  .command('create')
+  .description('Create a new Linear issue')
+  .option('--title <string>', 'Issue title (required)')
+  .option('--team <id|alias>', 'Team ID or alias (required unless defaultTeam configured)')
+  .option('--description <string>', 'Issue description (markdown)')
+  .option('--description-file <path>', 'Read description from file (mutually exclusive with --description)')
+  .option('--priority <0-4>', 'Priority: 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low')
+  .option('--estimate <number>', 'Story points or time estimate')
+  .option('--state <id|alias>', 'Workflow state ID or alias (must belong to team)')
+  .option('--due-date <YYYY-MM-DD>', 'Due date in ISO format')
+  .option('--assignee <id|alias|email|name>', 'Assign to user (ID, alias, email, or display name)')
+  .option('--no-assignee', 'Create unassigned (overrides default auto-assignment)')
+  .option('--subscribers <list>', 'Comma-separated list of subscriber IDs, aliases, or emails')
+  .option('--project <id|alias|name>', 'Project ID, alias, or name (must belong to same team)')
+  .option('--cycle <uuid|alias>', 'Cycle UUID or alias')
+  .option('--parent <identifier>', 'Parent issue identifier (ENG-123 or UUID) for sub-issues')
+  .option('--labels <list>', 'Comma-separated list of label IDs or aliases')
+  .option('--template <id|alias>', 'Issue template ID or alias')
+  .option('-w, --web', 'Open created issue in browser')
+  .addHelpText('after', `
+Examples:
+  # Minimal (uses defaultTeam, auto-assigns to you)
+  $ linear-create issue create --title "Fix login bug"
+
+  # Standard creation
+  $ linear-create issue create \\
+      --title "Add OAuth support" \\
+      --team backend \\
+      --priority 2 \\
+      --estimate 8
+
+  # Full-featured creation
+  $ linear-create issue create \\
+      --title "Implement authentication" \\
+      --team backend \\
+      --description "Add OAuth2 with Google and GitHub providers" \\
+      --priority 1 \\
+      --estimate 13 \\
+      --state in-progress \\
+      --assignee john@company.com \\
+      --subscribers "jane@company.com,bob@company.com" \\
+      --labels "feature,security" \\
+      --project "Q1 Goals" \\
+      --due-date 2025-02-15 \\
+      --web
+
+  # Create sub-issue
+  $ linear-create issue create \\
+      --title "Write unit tests" \\
+      --parent ENG-123 \\
+      --team backend
+
+  # Read description from file
+  $ linear-create issue create \\
+      --title "API Documentation" \\
+      --team backend \\
+      --description-file docs/api-spec.md
+
+  # Create unassigned
+  $ linear-create issue create \\
+      --title "Research task" \\
+      --team backend \\
+      --no-assignee
+
+Field Details:
+  • Title: Required. The issue title.
+  • Team: Required (unless defaultTeam configured). The team this issue belongs to.
+  • Auto-assignment: By default, issues are assigned to you. Use --assignee to assign
+    to someone else, or --no-assignee to create an unassigned issue.
+  • Priority: 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low
+  • State: Must belong to the same team. Use workflow state ID or alias.
+  • Project: Must belong to the same team. Supports ID, alias, or name lookup.
+  • Cycle: Must be a valid UUID or cycle alias.
+  • Labels: Comma-separated list. Supports label IDs or aliases.
+  • Subscribers: Comma-separated list. Supports member IDs, aliases, emails, or display names.
+  • Parent: Creates a sub-issue. Use issue identifier (ENG-123) or UUID.
+
+Member Resolution:
+  The --assignee and --subscribers options support multiple resolution methods:
+    • Linear ID: user_abc123
+    • Alias: john (from your aliases.json)
+    • Email: john@company.com (exact match lookup)
+    • Display name: "John Doe" (with disambiguation if multiple matches)
+
+Config Defaults:
+  • defaultTeam: If set, team becomes optional
+  • defaultProject: Used if --project not specified (must belong to same team)
+
+  Set defaults with:
+    $ linear-create config set defaultTeam <team-id>
+    $ linear-create config set defaultProject <project-id>
+`)
+  .action(async (options) => {
+    await createIssueCommand(options);
   });
 
 // Setup command
