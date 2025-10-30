@@ -1,6 +1,14 @@
 import { LinearClient as SDKClient } from '@linear/sdk';
 import { getApiKey } from './config.js';
-import type { ProjectListFilters, ProjectListItem, ProjectRelation, ProjectRelationCreateInput } from './types.js';
+import type {
+  ProjectListFilters,
+  ProjectListItem,
+  ProjectRelation,
+  ProjectRelationCreateInput,
+  IssueCreateInput,
+  IssueUpdateInput,
+  IssueListFilters,
+} from './types.js';
 import { getRelationDirection } from './parsers.js';
 
 export class LinearClientError extends Error {
@@ -543,15 +551,68 @@ export async function searchMembers(options: {
 }
 
 /**
- * Resolve a member identifier (ID, alias, or email) to a member
+ * Get member by display name (M15.1)
+ * Returns single member or throws error for disambiguation if multiple matches
+ *
+ * @param displayName - The display name to search for (case-insensitive)
+ * @returns Member details or null if not found
+ * @throws Error if multiple members match (requires disambiguation)
+ */
+export async function getMemberByDisplayName(displayName: string): Promise<Member | null> {
+  try {
+    // Use entity cache to get all members
+    const { getEntityCache } = await import('./entity-cache.js');
+    const cache = getEntityCache();
+    const members = await cache.getMembers();
+
+    // Filter by display name (case-insensitive exact match)
+    const normalizedName = displayName.trim().toLowerCase();
+    const matches = members.filter(m =>
+      m.displayName?.toLowerCase() === normalizedName ||
+      m.name.toLowerCase() === normalizedName
+    );
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    if (matches.length === 1) {
+      return matches[0];
+    }
+
+    // Multiple matches - require disambiguation
+    const matchList = matches.map(m => `  - ${m.name} (${m.email})`).join('\n');
+    throw new Error(
+      `Multiple users match "${displayName}":\n${matchList}\n\nPlease use email or ID to specify which user.`
+    );
+  } catch (error) {
+    // Re-throw disambiguation errors
+    if (error instanceof Error && error.message.includes('Multiple users match')) {
+      throw error;
+    }
+
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to search member by display name: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Resolve a member identifier (ID, alias, email, or display name) to a member (M15.1 Enhanced)
  * Tries multiple lookup strategies in order:
  * 1. Alias resolution (if configured)
  * 2. Direct ID lookup (if looks like a UUID)
  * 3. Email lookup (if contains @)
+ * 4. Display name lookup (fallback)
  *
- * @param identifier - The member identifier (ID, alias, or email)
+ * @param identifier - The member identifier (ID, alias, email, or display name)
  * @param resolveAliasFn - Optional alias resolver function
  * @returns Member details or null if not found
+ * @throws Error if display name matches multiple users (disambiguation required)
  */
 export async function resolveMemberIdentifier(
   identifier: string,
@@ -596,12 +657,398 @@ export async function resolveMemberIdentifier(
       }
     }
 
+    // Try display name lookup as fallback (M15.1)
+    // This may throw an error if multiple matches (disambiguation required)
+    const memberByName = await getMemberByDisplayName(trimmedId);
+    if (memberByName) {
+      return {
+        id: memberByName.id,
+        name: memberByName.name,
+        email: memberByName.email,
+      };
+    }
+
     // Not found by any method
     return null;
   } catch (error) {
-    // If there's an error during lookup, return null
+    // Re-throw disambiguation errors so caller can show them to user
+    if (error instanceof Error && error.message.includes('Multiple users match')) {
+      throw error;
+    }
+
+    // For other errors, return null
     // The caller will handle the error messaging
     return null;
+  }
+}
+
+/**
+ * Get cycle by ID (M15.1)
+ * @param cycleId - Cycle UUID
+ * @returns Cycle details or null if not found
+ */
+export async function getCycleById(cycleId: string): Promise<{
+  id: string;
+  name: string;
+  number: number;
+  startsAt?: string;
+  endsAt?: string;
+} | null> {
+  try {
+    const client = getLinearClient();
+    const cycle = await client.cycle(cycleId);
+
+    if (!cycle) {
+      return null;
+    }
+
+    return {
+      id: cycle.id,
+      name: cycle.name || `Cycle #${cycle.number}`,
+      number: cycle.number,
+      startsAt: cycle.startsAt?.toString(),
+      endsAt: cycle.endsAt?.toString(),
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Resolve cycle identifier (UUID or alias) to cycle ID (M15.1)
+ * Supports both UUID format and alias resolution via the alias system
+ *
+ * @param identifier - Cycle ID (UUID) or alias
+ * @param resolveAliasFn - Optional alias resolver function
+ * @returns Cycle ID (UUID) or null if not found
+ */
+export async function resolveCycleIdentifier(
+  identifier: string,
+  resolveAliasFn?: (type: 'cycle', value: string) => string
+): Promise<string | null> {
+  try {
+    const trimmedId = identifier.trim();
+
+    // Try alias resolution first (if resolver provided)
+    let resolvedId = trimmedId;
+    if (resolveAliasFn) {
+      const aliasResolved = resolveAliasFn('cycle', trimmedId);
+      if (aliasResolved !== trimmedId) {
+        resolvedId = aliasResolved;
+        // Alias was found, now validate the resolved ID
+        const cycle = await getCycleById(resolvedId);
+        if (cycle) {
+          return cycle.id;
+        }
+      }
+    }
+
+    // Try direct ID lookup if it looks like a UUID
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidPattern.test(resolvedId)) {
+      const cycle = await getCycleById(resolvedId);
+      if (cycle) {
+        return cycle.id;
+      }
+    }
+
+    // Not found by any method
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Create a new issue (M15.1)
+ * @param input - Issue creation data
+ * @returns Created issue details
+ */
+export async function createIssue(input: IssueCreateInput): Promise<{
+  id: string;
+  identifier: string;
+  title: string;
+  url: string;
+}> {
+  try {
+    const client = getLinearClient();
+
+    // Create the issue with all provided fields
+    const issue = await client.createIssue({
+      title: input.title,
+      teamId: input.teamId,
+      description: input.description,
+      descriptionData: input.descriptionData,
+      priority: input.priority,
+      estimate: input.estimate,
+      stateId: input.stateId,
+      assigneeId: input.assigneeId,
+      subscriberIds: input.subscriberIds,
+      projectId: input.projectId,
+      cycleId: input.cycleId,
+      parentId: input.parentId,
+      labelIds: input.labelIds,
+      dueDate: input.dueDate,
+      createAsUser: input.templateId, // Note: createAsUser is deprecated, using templateId differently
+    });
+
+    const createdIssue = await issue.issue;
+
+    if (!createdIssue) {
+      throw new Error('Issue creation failed - no issue returned');
+    }
+
+    return {
+      id: createdIssue.id,
+      identifier: createdIssue.identifier,
+      title: createdIssue.title,
+      url: createdIssue.url,
+    };
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to create issue: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Update an existing issue (M15.1)
+ * @param issueId - Issue UUID
+ * @param input - Issue update data
+ * @returns Updated issue details
+ */
+export async function updateIssue(issueId: string, input: IssueUpdateInput): Promise<{
+  id: string;
+  identifier: string;
+  title: string;
+}> {
+  try {
+    const client = getLinearClient();
+
+    // Update the issue with all provided fields
+    const issue = await client.updateIssue(issueId, {
+      title: input.title,
+      description: input.description,
+      descriptionData: input.descriptionData,
+      priority: input.priority,
+      estimate: input.estimate,
+      stateId: input.stateId,
+      assigneeId: input.assigneeId,
+      subscriberIds: input.subscriberIds,
+      teamId: input.teamId,
+      projectId: input.projectId,
+      cycleId: input.cycleId,
+      parentId: input.parentId,
+      labelIds: input.labelIds,
+      dueDate: input.dueDate,
+      trashed: input.trashed,
+    });
+
+    const updatedIssue = await issue.issue;
+
+    if (!updatedIssue) {
+      throw new Error('Issue update failed - no issue returned');
+    }
+
+    return {
+      id: updatedIssue.id,
+      identifier: updatedIssue.identifier,
+      title: updatedIssue.title,
+    };
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to update issue: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Get issue by UUID (M15.1)
+ * @param issueId - Issue UUID
+ * @returns Issue details or null if not found
+ */
+export async function getIssueById(issueId: string): Promise<{
+  id: string;
+  identifier: string;
+  title: string;
+  description?: string;
+  url: string;
+} | null> {
+  try {
+    const client = getLinearClient();
+    const issue = await client.issue(issueId);
+
+    if (!issue) {
+      return null;
+    }
+
+    return {
+      id: issue.id,
+      identifier: issue.identifier,
+      title: issue.title,
+      description: issue.description || undefined,
+      url: issue.url,
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Get issue by identifier (ENG-123 format) (M15.1)
+ * @param identifier - Issue identifier (e.g., "ENG-123")
+ * @returns Issue details or null if not found
+ */
+export async function getIssueByIdentifier(identifier: string): Promise<{
+  id: string;
+  identifier: string;
+  title: string;
+  url: string;
+} | null> {
+  try {
+    // Use the issue resolver to convert identifier to UUID
+    const { resolveIssueId } = await import('./issue-resolver.js');
+    const issueId = await resolveIssueId(identifier);
+
+    if (!issueId) {
+      return null;
+    }
+
+    return await getIssueById(issueId);
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Get all issues with optional filtering (M15.1)
+ * @param filters - Optional filters for issues
+ * @returns Array of issues matching the filters
+ */
+export async function getAllIssues(filters?: IssueListFilters): Promise<Array<{
+  id: string;
+  identifier: string;
+  title: string;
+  priority?: number;
+  url: string;
+}>> {
+  try {
+    const client = getLinearClient();
+
+    // Build GraphQL filter from IssueListFilters
+    const graphqlFilter: any = {};
+
+    if (filters?.teamId) {
+      graphqlFilter.team = { id: { eq: filters.teamId } };
+    }
+
+    if (filters?.assigneeId) {
+      graphqlFilter.assignee = { id: { eq: filters.assigneeId } };
+    }
+
+    if (filters?.projectId) {
+      graphqlFilter.project = { id: { eq: filters.projectId } };
+    }
+
+    if (filters?.stateId) {
+      graphqlFilter.state = { id: { eq: filters.stateId } };
+    }
+
+    if (filters?.priority !== undefined) {
+      graphqlFilter.priority = { eq: filters.priority };
+    }
+
+    if (filters?.parentId) {
+      graphqlFilter.parent = { id: { eq: filters.parentId } };
+    }
+
+    if (filters?.cycleId) {
+      graphqlFilter.cycle = { id: { eq: filters.cycleId } };
+    }
+
+    if (filters?.hasParent !== undefined) {
+      graphqlFilter.parent = filters.hasParent ? { null: false } : { null: true };
+    }
+
+    if (filters?.search) {
+      graphqlFilter.searchableContent = { contains: filters.search };
+    }
+
+    // Handle status filters
+    if (filters?.includeCompleted === false) {
+      graphqlFilter.completedAt = { null: true };
+    }
+
+    if (filters?.includeCanceled === false) {
+      graphqlFilter.canceledAt = { null: true };
+    }
+
+    if (filters?.includeArchived === false) {
+      graphqlFilter.archivedAt = { null: true };
+    }
+
+    // Query issues
+    const limit = filters?.limit || 50;
+    const issues = await client.issues({
+      filter: Object.keys(graphqlFilter).length > 0 ? graphqlFilter : undefined,
+      first: Math.min(limit, 250), // Linear API max is 250
+    });
+
+    const issuesList = await issues.nodes;
+
+    return issuesList.map(issue => ({
+      id: issue.id,
+      identifier: issue.identifier,
+      title: issue.title,
+      priority: issue.priority || undefined,
+      url: issue.url,
+    }));
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to get issues: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Get issues assigned to the current user (M15.1)
+ * Helper function for default list behavior
+ * @returns Array of issues assigned to current user
+ */
+export async function getCurrentUserIssues(): Promise<Array<{
+  id: string;
+  identifier: string;
+  title: string;
+  priority?: number;
+  url: string;
+}>> {
+  try {
+    const client = getLinearClient();
+    const viewer = await client.viewer;
+
+    return await getAllIssues({
+      assigneeId: viewer.id,
+    });
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to get current user issues: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 

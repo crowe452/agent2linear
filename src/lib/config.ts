@@ -52,11 +52,18 @@ export function getConfig(): ResolvedConfig {
     apiKey: { type: 'none' },
     defaultInitiative: { type: 'none' },
     defaultTeam: { type: 'none' },
+    defaultProject: { type: 'none' }, // M15.1: Default project for issues
     defaultIssueTemplate: { type: 'none' },
     defaultProjectTemplate: { type: 'none' },
     defaultMilestoneTemplate: { type: 'none' },
     projectCacheMinTTL: { type: 'none' },
     defaultAutoAssignLead: { type: 'none' },
+    entityCacheMinTTL: { type: 'none' },
+    enableEntityCache: { type: 'none' },
+    enablePersistentCache: { type: 'none' },
+    enableSessionCache: { type: 'none' },
+    enableBatchFetching: { type: 'none' },
+    prewarmCacheOnCreate: { type: 'none' },
   };
 
   // API Key location (env has highest priority for security)
@@ -80,6 +87,13 @@ export function getConfig(): ResolvedConfig {
     locations.defaultTeam = { type: 'project', path: PROJECT_CONFIG_FILE };
   } else if (globalConfig.defaultTeam) {
     locations.defaultTeam = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Default Project location (M15.1)
+  if (projectConfig.defaultProject) {
+    locations.defaultProject = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.defaultProject) {
+    locations.defaultProject = { type: 'global', path: GLOBAL_CONFIG_FILE };
   }
 
   // Default Issue Template location
@@ -115,6 +129,48 @@ export function getConfig(): ResolvedConfig {
     locations.defaultAutoAssignLead = { type: 'project', path: PROJECT_CONFIG_FILE };
   } else if (globalConfig.defaultAutoAssignLead !== undefined) {
     locations.defaultAutoAssignLead = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Entity Cache Min TTL location
+  if (projectConfig.entityCacheMinTTL) {
+    locations.entityCacheMinTTL = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.entityCacheMinTTL) {
+    locations.entityCacheMinTTL = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Enable Entity Cache location
+  if (projectConfig.enableEntityCache !== undefined) {
+    locations.enableEntityCache = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.enableEntityCache !== undefined) {
+    locations.enableEntityCache = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Enable Persistent Cache location
+  if (projectConfig.enablePersistentCache !== undefined) {
+    locations.enablePersistentCache = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.enablePersistentCache !== undefined) {
+    locations.enablePersistentCache = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Enable Session Cache location
+  if (projectConfig.enableSessionCache !== undefined) {
+    locations.enableSessionCache = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.enableSessionCache !== undefined) {
+    locations.enableSessionCache = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Enable Batch Fetching location
+  if (projectConfig.enableBatchFetching !== undefined) {
+    locations.enableBatchFetching = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.enableBatchFetching !== undefined) {
+    locations.enableBatchFetching = { type: 'global', path: GLOBAL_CONFIG_FILE };
+  }
+
+  // Prewarm Cache On Create location
+  if (projectConfig.prewarmCacheOnCreate !== undefined) {
+    locations.prewarmCacheOnCreate = { type: 'project', path: PROJECT_CONFIG_FILE };
+  } else if (globalConfig.prewarmCacheOnCreate !== undefined) {
+    locations.prewarmCacheOnCreate = { type: 'global', path: GLOBAL_CONFIG_FILE };
   }
 
   // Merge configs with priority: project > global for most settings, but env > all for API key
@@ -197,7 +253,23 @@ export function maskApiKey(apiKey: string): string {
 /**
  * Valid configuration keys
  */
-const VALID_CONFIG_KEYS = ['apiKey', 'defaultInitiative', 'defaultTeam', 'defaultIssueTemplate', 'defaultProjectTemplate', 'defaultMilestoneTemplate', 'projectCacheMinTTL', 'defaultAutoAssignLead'] as const;
+const VALID_CONFIG_KEYS = [
+  'apiKey',
+  'defaultInitiative',
+  'defaultTeam',
+  'defaultProject', // M15.1: Default project for issue creation
+  'defaultIssueTemplate',
+  'defaultProjectTemplate',
+  'defaultMilestoneTemplate',
+  'projectCacheMinTTL',
+  'defaultAutoAssignLead',
+  'entityCacheMinTTL',
+  'enableEntityCache',
+  'enablePersistentCache',
+  'enableSessionCache',
+  'enableBatchFetching',
+  'prewarmCacheOnCreate'
+] as const;
 export type ConfigKey = (typeof VALID_CONFIG_KEYS)[number];
 
 /**
@@ -219,19 +291,26 @@ export function setConfigValue(
   const existingConfig = readConfigFile(configFile);
 
   // Validate projectCacheMinTTL
-  if (key === 'projectCacheMinTTL') {
+  if (key === 'projectCacheMinTTL' || key === 'entityCacheMinTTL') {
     const ttl = parseInt(value, 10);
     if (isNaN(ttl)) {
-      throw new Error('projectCacheMinTTL must be a number');
+      throw new Error(`${key} must be a number`);
     }
     if (ttl < 1) {
-      throw new Error('projectCacheMinTTL must be at least 1 minute');
+      throw new Error(`${key} must be at least 1 minute`);
     }
     if (ttl > 1440) {
-      throw new Error('projectCacheMinTTL must not exceed 1440 minutes (24 hours)');
+      throw new Error(`${key} must not exceed 1440 minutes (24 hours)`);
     }
     existingConfig[key] = ttl;
-  } else if (key === 'defaultAutoAssignLead') {
+  } else if (
+    key === 'defaultAutoAssignLead' ||
+    key === 'enableEntityCache' ||
+    key === 'enablePersistentCache' ||
+    key === 'enableSessionCache' ||
+    key === 'enableBatchFetching' ||
+    key === 'prewarmCacheOnCreate'
+  ) {
     // Parse boolean value
     const lowerValue = value.toLowerCase();
     if (lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes') {
@@ -239,7 +318,7 @@ export function setConfigValue(
     } else if (lowerValue === 'false' || lowerValue === '0' || lowerValue === 'no') {
       existingConfig[key] = false;
     } else {
-      throw new Error('defaultAutoAssignLead must be true or false');
+      throw new Error(`${key} must be true or false`);
     }
   } else {
     existingConfig[key] = value;

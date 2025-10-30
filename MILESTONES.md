@@ -147,7 +147,7 @@ ENG-123  API redesign       High    Backlog      Backend
 
 ---
 
-### [ ] Milestone M15.1: Issue Infrastructure & Foundation (v0.24.0-alpha.1)
+### [x] Milestone M15.1: Issue Infrastructure & Foundation (v0.24.0-alpha.1)
 **Goal**: Build foundational infrastructure for issue commands - types, resolver, config, and API functions
 
 **Performance Note**: While this is infrastructure, ensure API functions are efficient. For batch operations or lists, design for single-query patterns from the start.
@@ -167,90 +167,90 @@ ENG-123  API redesign       High    Backlog      Backend
 #### Tests & Tasks
 
 **Type Definitions:**
-- [ ] [M15.1-T01] Add `IssueCreateInput` interface to types.ts with all creation fields
-- [ ] [M15.1-T02] Add `IssueUpdateInput` interface to types.ts with all update fields
-- [ ] [M15.1-T03] Add `IssueListFilters` interface to types.ts with all filter options
-- [ ] [M15.1-T04] Add `IssueViewData` interface to types.ts for display
-- [ ] [M15.1-TS01] Verify TypeScript compilation with new types (npm run typecheck)
+- [x] [M15.1-T01] Add `IssueCreateInput` interface to types.ts with all creation fields
+- [x] [M15.1-T02] Add `IssueUpdateInput` interface to types.ts with all update fields
+- [x] [M15.1-T03] Add `IssueListFilters` interface to types.ts with all filter options
+- [x] [M15.1-T04] Add `IssueViewData` interface to types.ts for display
+- [x] [M15.1-TS01] Verify TypeScript compilation with new types (npm run typecheck)
 
 **Issue Identifier Resolver:**
-- [ ] [M15.1-T05] Create src/lib/issue-resolver.ts with `resolveIssueIdentifier()` function
-- [ ] [M15.1-T06] Implement UUID format detection and passthrough
-- [ ] [M15.1-T07] Implement team-key + number parsing (ENG-123 format)
-- [ ] [M15.1-T07a] Add identifier format validation (regex for team-number pattern: /^[A-Z]+-\d+$/)
-- [ ] [M15.1-T08] Implement GraphQL query to resolve identifier to UUID
-- [ ] [M15.1-T08a] Add UUID format validation (proper UUID structure check: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-- [ ] [M15.1-T09] Add caching for resolved identifiers (optional optimization)
-- [ ] [M15.1-TS02] Test resolver with ENG-123 format identifiers
-- [ ] [M15.1-TS03] Test resolver with UUID format
-- [ ] [M15.1-TS04] Test resolver with invalid identifiers (error handling)
-- [ ] [M15.1-TS04a] Test error: malformed identifier (e.g., "ENG", "123", "invalid-123")
-- [ ] [M15.1-TS04b] Test error: identifier with invalid characters (e.g., "ENG-123abc")
-- [ ] [M15.1-TS04c] Test case insensitivity (eng-123 vs ENG-123 should both work)
+- [x] [M15.1-T05] Create src/lib/issue-resolver.ts with `resolveIssueIdentifier()` function
+- [x] [M15.1-T06] Implement UUID format detection and passthrough
+- [x] [M15.1-T07] Implement team-key + number parsing (ENG-123 format)
+- [x] [M15.1-T07a] Add identifier format validation (regex for team-number pattern: /^[A-Z]+-\d+$/)
+- [x] [M15.1-T08] Implement GraphQL query to resolve identifier to UUID
+- [x] [M15.1-T08a] Add UUID format validation (proper UUID structure check: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+- [x] [M15.1-T09] Add caching for resolved identifiers (optional optimization)
+- [x] [M15.1-TS02] Test resolver with ENG-123 format identifiers
+- [x] [M15.1-TS03] Test resolver with UUID format
+- [x] [M15.1-TS04] Test resolver with invalid identifiers (error handling)
+- [x] [M15.1-TS04a] Test error: malformed identifier (e.g., "ENG", "123", "invalid-123")
+- [x] [M15.1-TS04b] Test error: identifier with invalid characters (e.g., "ENG-123abc")
+- [x] [M15.1-TS04c] Test case insensitivity (eng-123 vs ENG-123 should both work)
 
 **Config Updates:**
-- [ ] [M15.1-T10] Add `defaultProject` support to config.ts (type already exists in types.ts)
-- [ ] [M15.1-T10a] Verify defaultTeam config key exists in config.ts (should already exist)
-- [ ] [M15.1-T11] Update config get/set/list commands to handle defaultProject and defaultTeam
-- [ ] [M15.1-TS05] Test config set/get for defaultProject
-- [ ] [M15.1-TS05a] Test config set/get for defaultTeam
+- [x] [M15.1-T10] Add `defaultProject` support to config.ts (type already exists in types.ts)
+- [x] [M15.1-T10a] Verify defaultTeam config key exists in config.ts (should already exist)
+- [x] [M15.1-T11] Update config get/set/list commands to handle defaultProject and defaultTeam
+- [x] [M15.1-TS05] Test config set/get for defaultProject
+- [x] [M15.1-TS05a] Test config set/get for defaultTeam
 
 **Linear Client API Functions:**
-- [ ] [M15.1-T12] Add `createIssue(input: IssueCreateInput)` to linear-client.ts
-- [ ] [M15.1-T13] Add `updateIssue(id: string, input: IssueUpdateInput)` to linear-client.ts
-- [ ] [M15.1-T14] Add `getIssueById(id: string)` to linear-client.ts
-- [ ] [M15.1-T15] Add `getIssueByIdentifier(identifier: string)` to linear-client.ts
-- [ ] [M15.1-T16] Add `getAllIssues(filters: IssueListFilters)` to linear-client.ts
-- [ ] [M15.1-T17] Add `getCurrentUserIssues()` helper for list defaults
-- [ ] [M15.1-TS06] Test createIssue API function with minimal input
-- [ ] [M15.1-TS07] Test getIssueById API function
-- [ ] [M15.1-TS08] Test getAllIssues API function with basic filters
+- [x] [M15.1-T12] Add `createIssue(input: IssueCreateInput)` to linear-client.ts
+- [x] [M15.1-T13] Add `updateIssue(id: string, input: IssueUpdateInput)` to linear-client.ts
+- [x] [M15.1-T14] Add `getIssueById(id: string)` to linear-client.ts
+- [x] [M15.1-T15] Add `getIssueByIdentifier(identifier: string)` to linear-client.ts
+- [x] [M15.1-T16] Add `getAllIssues(filters: IssueListFilters)` to linear-client.ts
+- [x] [M15.1-T17] Add `getCurrentUserIssues()` helper for list defaults
+- [x] [M15.1-TS06] Test createIssue API function with minimal input
+- [x] [M15.1-TS07] Test getIssueById API function
+- [x] [M15.1-TS08] Test getAllIssues API function with basic filters
 
 **Shared Utilities:**
-- [ ] [M15.1-T18] Add issue-specific validators to src/lib/validators.ts (priority range, etc.)
-- [ ] [M15.1-TS09] Test validators with valid and invalid inputs
+- [x] [M15.1-T18] Add issue-specific validators to src/lib/validators.ts (priority range, etc.)
+- [x] [M15.1-TS09] Test validators with valid and invalid inputs
 
 **Member Resolution with Email Lookup:**
-- [ ] [M15.1-T19] Implement email lookup in member resolver (query Linear API users by email)
-- [ ] [M15.1-T20] Implement display name lookup fallback in member resolver (query by display name)
-- [ ] [M15.1-T20a] Add disambiguation logic for multiple name matches (error with list of matches)
-- [ ] [M15.1-TS10] Test member resolution by email (exact match)
-- [ ] [M15.1-TS11] Test member resolution by display name
-- [ ] [M15.1-TS11a] Test error: multiple users match display name (clear disambiguation message)
+- [x] [M15.1-T19] Implement email lookup in member resolver (query Linear API users by email)
+- [x] [M15.1-T20] Implement display name lookup fallback in member resolver (query by display name)
+- [x] [M15.1-T20a] Add disambiguation logic for multiple name matches (error with list of matches)
+- [x] [M15.1-TS10] Test member resolution by email (exact match)
+- [x] [M15.1-TS11] Test member resolution by display name
+- [x] [M15.1-TS11a] Test error: multiple users match display name (clear disambiguation message)
 
 **Project Name Resolution:**
-- [ ] [M15.1-T21] Implement project name resolver in src/lib/project-resolver.ts (or extend existing resolver)
-- [ ] [M15.1-T21a] Add exact name matching for project resolution
-- [ ] [M15.1-T21b] Add fuzzy/partial name matching with disambiguation for multiple matches
-- [ ] [M15.1-TS12] Test project resolution by exact name
-- [ ] [M15.1-TS13] Test project resolution by partial name match
-- [ ] [M15.1-TS14] Test error: ambiguous project name (multiple matches, show options)
+- [x] [M15.1-T21] Implement project name resolver in src/lib/project-resolver.ts (or extend existing resolver)
+- [x] [M15.1-T21a] Add exact name matching for project resolution
+- [x] [M15.1-T21b] Add fuzzy/partial name matching with disambiguation for multiple matches
+- [x] [M15.1-TS12] Test project resolution by exact name
+- [x] [M15.1-TS13] Test project resolution by partial name match
+- [x] [M15.1-TS14] Test error: ambiguous project name (multiple matches, show options)
 
 **Cycle Alias Support:**
-- [ ] [M15.1-T22] Add 'cycle' to supported alias types in aliases.ts
-- [ ] [M15.1-T22a] Implement cycle resolver supporting both UUID and alias
-- [ ] [M15.1-TS14a] Test cycle resolution by UUID
-- [ ] [M15.1-TS14b] Test cycle resolution by alias
+- [x] [M15.1-T22] Add 'cycle' to supported alias types in aliases.ts
+- [x] [M15.1-T22a] Implement cycle resolver supporting both UUID and alias
+- [x] [M15.1-TS14a] Test cycle resolution by UUID
+- [x] [M15.1-TS14b] Test cycle resolution by alias
 
 **GraphQL Error Handling:**
-- [ ] [M15.1-T23] Implement GraphQL error handler in src/lib/error-handler.ts (parse Linear API errors)
-- [ ] [M15.1-T24] Add user-friendly error messages for common Linear errors:
+- [x] [M15.1-T23] Implement GraphQL error handler in src/lib/error-handler.ts (parse Linear API errors)
+- [x] [M15.1-T24] Add user-friendly error messages for common Linear errors:
       - 401: "Authentication failed. Check LINEAR_API_KEY environment variable."
       - 403: "Permission denied. You don't have access to this resource."
       - 404: "Resource not found. Check that {entity} ID/identifier is correct."
       - 429: "Rate limited. Please wait {retry-after} seconds and try again."
       - Validation errors: Extract and display Linear's error message
-- [ ] [M15.1-TS15] Test error: API returns 401 (authentication failed)
-- [ ] [M15.1-TS16] Test error: API returns 403 (permission denied)
-- [ ] [M15.1-TS17] Test error: API returns 429 (rate limited)
-- [ ] [M15.1-TS18] Test error: API returns 404 (not found)
+- [x] [M15.1-TS15] Test error: API returns 401 (authentication failed)
+- [x] [M15.1-TS16] Test error: API returns 403 (permission denied)
+- [x] [M15.1-TS17] Test error: API returns 429 (rate limited)
+- [x] [M15.1-TS18] Test error: API returns 404 (not found)
 
 **Alias Resolution Error Messages:**
-- [ ] [M15.1-T25] Add helpful alias resolution error messages:
+- [x] [M15.1-T25] Add helpful alias resolution error messages:
       - "Alias '{alias}' not found for type '{type}'. Available: {list of aliases}"
       - Implement fuzzy matching for "Did you mean '{suggestion}'?" suggestions
-- [ ] [M15.1-TS19] Test error: alias doesn't exist (with helpful message showing available aliases)
-- [ ] [M15.1-TS20] Test error: typo in alias name (with "did you mean" suggestion)
+- [x] [M15.1-TS19] Test error: alias doesn't exist (with helpful message showing available aliases)
+- [x] [M15.1-TS20] Test error: typo in alias name (with "did you mean" suggestion)
 
 #### Deliverable
 ```bash
@@ -265,17 +265,17 @@ $ linear-create config set defaultProject "my-project"
 ```
 
 #### Verification
-- [ ] `npm run build` succeeds
-- [ ] `npm run typecheck` passes with no errors
-- [ ] `npm run lint` passes
-- [ ] All infrastructure tests pass (TS01-TS20, ~20 test cases)
-- [ ] Issue identifier resolver works with both ENG-123 and UUID formats (with validation)
-- [ ] Member resolver supports ID, alias, email, and display name
-- [ ] Project resolver supports ID, alias, and name (exact + fuzzy)
-- [ ] Cycle resolver supports both UUID and alias
-- [ ] Config defaultProject and defaultTeam can be set and retrieved
-- [ ] Linear API functions execute without runtime errors
-- [ ] Error handling provides helpful messages for all common failure modes
+- [x] `npm run build` succeeds
+- [x] `npm run typecheck` passes with no errors
+- [x] `npm run lint` passes
+- [x] All infrastructure tests pass (TS01-TS20, ~20 test cases)
+- [x] Issue identifier resolver works with both ENG-123 and UUID formats (with validation)
+- [x] Member resolver supports ID, alias, email, and display name
+- [x] Project resolver supports ID, alias, and name (exact + fuzzy)
+- [x] Cycle resolver supports both UUID and alias
+- [x] Config defaultProject and defaultTeam can be set and retrieved
+- [x] Linear API functions execute without runtime errors
+- [x] Error handling provides helpful messages for all common failure modes
 
 ---
 

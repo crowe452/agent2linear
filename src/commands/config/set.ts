@@ -19,7 +19,7 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
   if (!isValidConfigKey(key)) {
     showError(
       `Invalid configuration key: ${key}`,
-      'Valid keys are: apiKey, defaultInitiative, defaultTeam, defaultIssueTemplate, defaultProjectTemplate'
+      'Valid keys are: apiKey, defaultInitiative, defaultTeam, defaultProject, defaultIssueTemplate, defaultProjectTemplate'
     );
     process.exit(1);
   }
@@ -62,6 +62,18 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
         process.exit(1);
       }
       showValidated('team', result.name ?? 'Unknown');
+    } else if (key === 'defaultProject') {
+      // Validate project exists (M15.1)
+      const { getProjectById } = await import('../../lib/linear-client.js');
+      const project = await getProjectById(value);
+      if (!project) {
+        showError(
+          `Project not found: ${value}`,
+          'Use "linear-create project list" to see available projects'
+        );
+        process.exit(1);
+      }
+      console.log(`   ✓ Project found: ${project.name}`);
     } else if (key === 'defaultIssueTemplate' || key === 'defaultProjectTemplate') {
       // Validate template exists
       const template = await getTemplateById(value);
@@ -106,11 +118,13 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
           ? 'Default Initiative'
           : key === 'defaultTeam'
             ? 'Default Team'
-            : key === 'defaultIssueTemplate'
-              ? 'Default Issue Template'
-              : key === 'defaultProjectTemplate'
-                ? 'Default Project Template'
-                : 'Default Milestone Template';
+            : key === 'defaultProject'
+              ? 'Default Project'
+              : key === 'defaultIssueTemplate'
+                ? 'Default Issue Template'
+                : key === 'defaultProjectTemplate'
+                  ? 'Default Project Template'
+                  : 'Default Milestone Template';
 
     showSuccess(`${keyLabel} saved to ${scopeLabel} config`);
 

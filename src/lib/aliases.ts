@@ -34,6 +34,7 @@ function getEmptyAliases(): Aliases {
     issueLabels: {},
     projectLabels: {},
     workflowStates: {},
+    cycles: {}, // M15.1: Cycle aliases
   };
 }
 
@@ -60,6 +61,7 @@ function readAliasesFile(path: string): Aliases {
       issueLabels: parsed.issueLabels || {},
       projectLabels: parsed.projectLabels || {},
       workflowStates: parsed.workflowStates || {},
+      cycles: parsed.cycles || {}, // M15.1: Cycle aliases
     };
   } catch (error) {
     // Only warn if file exists (not just missing)
@@ -157,6 +159,7 @@ export function loadAliases(): ResolvedAliases {
     'issue-label': {},
     'project-label': {},
     'workflow-state': {},
+    cycle: {}, // M15.1: Cycle aliases
   };
 
   // Merge and track locations for initiatives
@@ -259,6 +262,16 @@ export function loadAliases(): ResolvedAliases {
     locations['workflow-state'][alias] = { type: 'project', path: PROJECT_ALIASES_FILE };
   });
 
+  // Merge and track locations for cycles (M15.1)
+  const cycles = { ...globalAliases.cycles };
+  Object.keys(globalAliases.cycles).forEach((alias) => {
+    locations.cycle[alias] = { type: 'global', path: GLOBAL_ALIASES_FILE };
+  });
+  Object.keys(projectAliases.cycles).forEach((alias) => {
+    cycles[alias] = projectAliases.cycles[alias];
+    locations.cycle[alias] = { type: 'project', path: PROJECT_ALIASES_FILE };
+  });
+
   return {
     initiatives,
     teams,
@@ -270,6 +283,7 @@ export function loadAliases(): ResolvedAliases {
     issueLabels,
     projectLabels,
     workflowStates,
+    cycles, // M15.1: Cycle aliases
     locations,
   };
 }
@@ -320,9 +334,30 @@ function looksLikeLinearId(input: string, type: AliasEntityType): boolean {
 
 /**
  * Resolve an alias to a Linear ID transparently
- * If input is already an ID, return it as-is
- * If input is an alias, return the mapped ID
- * If neither, return the input (will fail downstream)
+ *
+ * Resolution priority:
+ * 1. If input looks like a Linear ID → return as-is (fast path, no lookup)
+ * 2. If input matches an alias → return mapped ID (local file lookup)
+ * 3. Otherwise → return input unchanged (will fail validation downstream)
+ *
+ * This function is synchronous and performs only local lookups.
+ * It does NOT validate that the ID exists in Linear.
+ *
+ * @param type - Entity type to resolve (e.g., 'team', 'initiative', 'project')
+ * @param input - User input (alias, ID, or name)
+ * @returns Resolved Linear ID or original input
+ *
+ * @example
+ * ```typescript
+ * // Alias resolution
+ * resolveAlias('team', 'backend')  // Returns 'team_abc123' if alias exists
+ *
+ * // ID passthrough
+ * resolveAlias('team', 'team_abc123')  // Returns 'team_abc123' (no lookup)
+ *
+ * // Unknown input (returns as-is)
+ * resolveAlias('team', 'nonexistent')  // Returns 'nonexistent' (fails later)
+ * ```
  */
 export function resolveAlias(type: AliasEntityType, input: string): string {
   // If it looks like a Linear ID, return as-is
@@ -885,6 +920,142 @@ export function clearAliases(
   writeAliasesFile(filePath, existingAliases);
 
   return { success: true, count, aliases: aliasesToClear };
+}
+
+/**
+ * Calculate Levenshtein distance between two strings (M15.1)
+ * Used for fuzzy matching and "did you mean" suggestions
+ */
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1 // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[str2.length][str1.length];
+}
+
+/**
+ * Find aliases similar to the input string (M15.1)
+ * Uses Levenshtein distance and substring matching for fuzzy search
+ *
+ * @param input - The input string to match against
+ * @param aliases - Array of available alias names
+ * @param maxDistance - Maximum Levenshtein distance for matches (default: 2)
+ * @returns Array of similar aliases, sorted by similarity
+ */
+export function findSimilarAliases(
+  input: string,
+  aliases: string[],
+  maxDistance: number = 2
+): string[] {
+  const normalizedInput = input.toLowerCase();
+  const matches: Array<{ alias: string; distance: number }> = [];
+
+  for (const alias of aliases) {
+    const normalizedAlias = alias.toLowerCase();
+
+    // Exact match (shouldn't happen in error case, but check anyway)
+    if (normalizedAlias === normalizedInput) {
+      matches.push({ alias, distance: 0 });
+      continue;
+    }
+
+    // Substring match (e.g., "back" matches "backend")
+    if (normalizedAlias.includes(normalizedInput) || normalizedInput.includes(normalizedAlias)) {
+      matches.push({ alias, distance: 0.5 }); // Prioritize substring matches
+      continue;
+    }
+
+    // Levenshtein distance match
+    const distance = levenshteinDistance(normalizedInput, normalizedAlias);
+    if (distance <= maxDistance) {
+      matches.push({ alias, distance });
+    }
+  }
+
+  // Sort by distance (closest first)
+  matches.sort((a, b) => a.distance - b.distance);
+
+  // Return just the alias names
+  return matches.map(m => m.alias);
+}
+
+/**
+ * Get a list of all aliases for a given entity type (M15.1)
+ * @param type - Entity type
+ * @returns Array of alias names
+ */
+export function getAliasesForType(type: AliasEntityType): string[] {
+  const aliases = loadAliases();
+  const key = getAliasesKey(type);
+  return Object.keys(aliases[key]);
+}
+
+/**
+ * Format error message with "did you mean" suggestions (M15.1)
+ *
+ * @param type - Entity type
+ * @param input - The input that wasn't found
+ * @param maxSuggestions - Maximum number of suggestions to show (default: 3)
+ * @returns Formatted error message with suggestions
+ *
+ * @example
+ * ```typescript
+ * const error = getAliasSuggestionError('team', 'backen');
+ * console.error(error);
+ * // Output:
+ * // Alias 'backen' not found for type 'team'.
+ * // Did you mean: backend, frontend, mobile?
+ * // Use "linear-create alias list team" to see all team aliases.
+ * ```
+ */
+export function getAliasSuggestionError(
+  type: AliasEntityType,
+  input: string,
+  maxSuggestions: number = 3
+): string {
+  const allAliases = getAliasesForType(type);
+
+  if (allAliases.length === 0) {
+    return (
+      `Alias '${input}' not found for type '${type}'.\n` +
+      `No ${type} aliases have been created yet.\n` +
+      `Use "linear-create alias add ${type} <alias> <id>" to create one.`
+    );
+  }
+
+  const similarAliases = findSimilarAliases(input, allAliases);
+
+  let message = `Alias '${input}' not found for type '${type}'.`;
+
+  if (similarAliases.length > 0) {
+    const suggestions = similarAliases.slice(0, maxSuggestions).join(', ');
+    message += `\n\nDid you mean: ${suggestions}?`;
+  }
+
+  message += `\n\nUse "linear-create alias list ${type}" to see all ${type} aliases.`;
+
+  return message;
 }
 
 /**

@@ -2,6 +2,7 @@ export interface Config {
   apiKey?: string;
   defaultInitiative?: string;
   defaultTeam?: string;
+  defaultProject?: string; // M15.1: Default project for issue creation
   defaultIssueTemplate?: string;
   defaultProjectTemplate?: string;
   defaultMilestoneTemplate?: string;
@@ -27,6 +28,7 @@ export interface ResolvedConfig extends Config {
     apiKey: ConfigLocation;
     defaultInitiative: ConfigLocation;
     defaultTeam: ConfigLocation;
+    defaultProject: ConfigLocation;
     defaultIssueTemplate: ConfigLocation;
     defaultProjectTemplate: ConfigLocation;
     defaultMilestoneTemplate: ConfigLocation;
@@ -41,7 +43,7 @@ export interface ResolvedConfig extends Config {
   };
 }
 
-export type AliasEntityType = 'initiative' | 'team' | 'project' | 'project-status' | 'issue-template' | 'project-template' | 'member' | 'issue-label' | 'project-label' | 'workflow-state';
+export type AliasEntityType = 'initiative' | 'team' | 'project' | 'project-status' | 'issue-template' | 'project-template' | 'member' | 'issue-label' | 'project-label' | 'workflow-state' | 'cycle';
 
 export interface AliasMap {
   [alias: string]: string; // alias -> Linear ID
@@ -58,6 +60,7 @@ export interface Aliases {
   issueLabels: AliasMap;
   projectLabels: AliasMap;
   workflowStates: AliasMap;
+  cycles: AliasMap; // M15.1: Cycle aliases for issue commands
 }
 
 export interface AliasLocation {
@@ -274,4 +277,206 @@ export interface DependencyDirection {
   relatedProjectId: string;
   anchorType: 'start' | 'end';
   relatedAnchorType: 'start' | 'end';
+}
+
+/**
+ * Issue creation input (M15.1)
+ * All fields for creating a new Linear issue
+ */
+export interface IssueCreateInput {
+  // Required fields
+  title: string;
+  teamId: string;
+
+  // Content fields
+  description?: string;
+  descriptionData?: any; // Linear's Prosemirror JSON format
+
+  // Priority & estimation
+  priority?: number; // 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low
+  estimate?: number; // Story points or time estimate
+
+  // Workflow fields
+  stateId?: string; // Workflow state (status)
+
+  // Assignment fields
+  assigneeId?: string; // Assigned user
+  subscriberIds?: string[]; // Users subscribed to updates
+
+  // Organization fields
+  projectId?: string;
+  cycleId?: string;
+  parentId?: string; // Parent issue for sub-issues
+  labelIds?: string[]; // Issue labels
+
+  // Date fields
+  dueDate?: string; // ISO date format (YYYY-MM-DD)
+
+  // Template
+  templateId?: string; // Issue template to apply
+}
+
+/**
+ * Issue update input (M15.1)
+ * All fields for updating an existing Linear issue
+ */
+export interface IssueUpdateInput {
+  // Basic fields
+  title?: string;
+  description?: string;
+  descriptionData?: any;
+
+  // Priority & estimation
+  priority?: number;
+  estimate?: number;
+
+  // Workflow fields
+  stateId?: string;
+
+  // Assignment fields
+  assigneeId?: string;
+  subscriberIds?: string[]; // Replace all subscribers
+
+  // Organization fields
+  teamId?: string; // Move to different team
+  projectId?: string;
+  cycleId?: string;
+  parentId?: string;
+  labelIds?: string[]; // Replace all labels
+
+  // Date fields
+  dueDate?: string;
+
+  // Lifecycle operations
+  trashed?: boolean; // Move to/from trash
+
+  // Add/remove patterns (handled separately in command logic)
+  // These are not direct API fields but used in CLI
+  addLabelIds?: string[];
+  removeLabelIds?: string[];
+  addSubscriberIds?: string[];
+  removeSubscriberIds?: string[];
+}
+
+/**
+ * Issue list filters (M15.1)
+ * Filter options for querying issues
+ */
+export interface IssueListFilters {
+  // Primary filters
+  teamId?: string;
+  assigneeId?: string;
+  projectId?: string;
+  initiativeId?: string; // Filter by initiative's projects
+
+  // Workflow filters
+  stateId?: string;
+  priority?: number;
+  labelIds?: string[]; // Issues with these labels
+
+  // Relationship filters
+  parentId?: string; // Sub-issues of this parent
+  cycleId?: string;
+  hasParent?: boolean; // true=only sub-issues, false=only root issues
+
+  // Status filters
+  includeCompleted?: boolean;
+  includeCanceled?: boolean;
+  includeArchived?: boolean;
+
+  // Search
+  search?: string; // Full-text search in title and description
+
+  // Pagination
+  limit?: number; // Max results (default: 50, max: 250)
+  fetchAll?: boolean; // Fetch all pages with cursor pagination
+
+  // Sorting
+  sortField?: 'priority' | 'created' | 'updated' | 'due';
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Issue view data (M15.1)
+ * Formatted data for displaying issue details
+ */
+export interface IssueViewData {
+  // Core identification
+  id: string;
+  identifier: string; // ENG-123 format
+  title: string;
+  url: string;
+
+  // Content
+  description?: string;
+  descriptionText?: string; // Plain text version
+
+  // Workflow
+  state: {
+    id: string;
+    name: string;
+    type: 'triage' | 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled';
+    color: string;
+  };
+  priority?: number;
+  estimate?: number;
+
+  // Assignment
+  assignee?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  subscribers: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+
+  // Organization
+  team: {
+    id: string;
+    key: string;
+    name: string;
+  };
+  project?: {
+    id: string;
+    name: string;
+  };
+  cycle?: {
+    id: string;
+    name: string;
+    number: number;
+  };
+  parent?: {
+    id: string;
+    identifier: string;
+    title: string;
+  };
+  children: Array<{
+    id: string;
+    identifier: string;
+    title: string;
+    state: string;
+  }>;
+  labels: Array<{
+    id: string;
+    name: string;
+    color: string;
+  }>;
+
+  // Dates
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  canceledAt?: string;
+  dueDate?: string;
+  archivedAt?: string;
+
+  // Creator
+  creator: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
