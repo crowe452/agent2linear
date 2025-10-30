@@ -1,12 +1,12 @@
 /**
- * Issue List Command (M15.5 Phase 2)
+ * Issue List Command (M15.5 Phase 3 - FINAL)
  *
- * PHASE 2 SCOPE:
- * - Smart defaults (assignee=me, defaultTeam, defaultInitiative, active only)
- * - Override flags (--all-assignees, etc.)
- * - Primary filters (team, assignee, project, initiative, state, priority)
- * - Status filters (active, completed, canceled, all-states, archived)
- * - Filter precedence logic
+ * PHASE 3 SCOPE (Final):
+ * - Advanced filters: labels (repeatable), parent/no-parent, cycle, search
+ * - Output formats: JSON, TSV (in addition to table)
+ * - Sorting: --sort and --order options
+ * - Web mode: --web flag
+ * - Comprehensive error handling and validation
  */
 
 import type { Command } from 'commander';
@@ -15,7 +15,9 @@ import { showError } from '../../lib/output.js';
 import { getConfig } from '../../lib/config.js';
 import { resolveAlias } from '../../lib/aliases.js';
 import { resolveProjectId } from '../../lib/project-resolver.js';
+import { resolveIssueIdentifier } from '../../lib/issue-resolver.js';
 import { getEntityCache } from '../../lib/entity-cache.js';
+import { openInBrowser } from '../../lib/browser.js';
 import type { IssueListFilters, IssueListItem } from '../../lib/types.js';
 
 // ========================================
@@ -28,69 +30,38 @@ async function buildDefaultFilters(options: any): Promise<IssueListFilters> {
   // ========================================
   // ASSIGNEE FILTER (default: current user "me")
   // ========================================
-  // Precedence:
-  // 1. If --all-assignees provided: no filter (show all)
-  // 2. If explicit --assignee provided: use it (overrides "me")
-  // 3. Otherwise: default to current user ("me")
   if (!options.allAssignees) {
     if (options.assignee) {
-      // Explicit assignee specified - resolve it
       const assigneeId = resolveAlias('member', options.assignee);
       filters.assigneeId = assigneeId;
     } else {
-      // Default: current user is the assignee (cached)
       const cache = getEntityCache();
       const currentUser = await cache.getCurrentUser();
       filters.assigneeId = currentUser.id;
     }
   }
-  // If --all-assignees: don't set assigneeId filter (show all assignees)
 
   // ========================================
   // TEAM FILTER (default: config.defaultTeam)
   // ========================================
-  // Precedence:
-  // 1. If explicit --team provided: use it (overrides defaultTeam)
-  // 2. Otherwise: use defaultTeam from config (if set)
   const teamId = options.team || config.defaultTeam;
   if (teamId) {
     filters.teamId = resolveAlias('team', teamId);
   }
 
   // ========================================
-  // INITIATIVE FILTER (deferred to Phase 3)
-  // ========================================
-  // Note: Linear's IssueFilter doesn't support direct initiative filtering
-  // We would need to fetch projects in initiative first, then filter by projectIds
-  // For Phase 2, we'll skip this and add in Phase 3 if needed
-  // const initiativeId = options.initiative || config.defaultInitiative;
-
-  // ========================================
   // ACTIVE FILTER (default: active issues only)
   // ========================================
-  // Active = workflow states with type: triage, backlog, unstarted, started
-  // Excludes: completed, canceled
-  // Note: Archived issues handled separately
-  //
-  // Status filter precedence:
-  // 1. If --completed: show only completed
-  // 2. If --canceled: show only canceled
-  // 3. If --all-states: show all states (no filter)
-  // 4. If --active or no status flag: show active only (default)
   if (options.completed) {
-    // Only completed issues
     filters.includeCompleted = true;
     filters.includeCanceled = false;
   } else if (options.canceled) {
-    // Only canceled issues
     filters.includeCompleted = false;
     filters.includeCanceled = true;
   } else if (options.allStates) {
-    // All states (no filtering by state type)
     filters.includeCompleted = true;
     filters.includeCanceled = true;
   } else {
-    // Default: active only (triage, backlog, unstarted, started)
     filters.includeCompleted = false;
     filters.includeCanceled = false;
   }
@@ -103,11 +74,10 @@ async function buildDefaultFilters(options: any): Promise<IssueListFilters> {
   }
 
   // ========================================
-  // EXPLICIT FILTERS (no defaults, only if specified)
+  // EXPLICIT FILTERS (Phase 2 & Phase 3)
   // ========================================
 
   if (options.project) {
-    // Project can be ID, alias, or name - use resolver
     const projectId = await resolveProjectId(options.project);
     if (projectId) {
       filters.projectId = projectId;
@@ -124,6 +94,68 @@ async function buildDefaultFilters(options: any): Promise<IssueListFilters> {
       throw new Error('Priority must be a number between 0 (None) and 4 (Low)');
     }
     filters.priority = priority;
+  }
+
+  // ========================================
+  // PHASE 3: ADVANCED FILTERS
+  // ========================================
+
+  // Labels (repeatable option)
+  if (options.label) {
+    const labels = Array.isArray(options.label) ? options.label : [options.label];
+    filters.labelIds = labels.map((l: string) => resolveAlias('issue-label', l));
+  }
+
+  // Parent/child relationships
+  if (options.parent && options.rootOnly) {
+    throw new Error('Cannot specify both --parent and --root-only');
+  }
+
+  if (options.parent) {
+    const parentResult = await resolveIssueIdentifier(options.parent);
+    if (!parentResult) {
+      throw new Error(`Parent issue not found: ${options.parent}`);
+    }
+    filters.parentId = parentResult.issueId;
+  } else if (options.rootOnly) {
+    filters.hasParent = false;
+  }
+
+  // Cycle filter
+  if (options.cycle) {
+    filters.cycleId = resolveAlias('cycle', options.cycle);
+  }
+
+  // Search (full-text)
+  if (options.search) {
+    filters.search = options.search;
+  }
+
+  // ========================================
+  // PHASE 3: SORTING
+  // ========================================
+  if (options.sort) {
+    const validSortFields = ['priority', 'created', 'updated', 'due'];
+    if (!validSortFields.includes(options.sort)) {
+      throw new Error(
+        `Invalid sort field: ${options.sort}. Valid options: ${validSortFields.join(', ')}`
+      );
+    }
+    filters.sortField = options.sort as any;
+  } else {
+    // Default sort: priority descending
+    filters.sortField = 'priority';
+  }
+
+  if (options.order) {
+    const validOrders = ['asc', 'desc'];
+    if (!validOrders.includes(options.order)) {
+      throw new Error(`Invalid sort order: ${options.order}. Valid options: asc, desc`);
+    }
+    filters.sortOrder = options.order as 'asc' | 'desc';
+  } else {
+    // Default order: descending
+    filters.sortOrder = 'desc';
   }
 
   return filters;
@@ -157,6 +189,36 @@ function formatTableOutput(issues: IssueListItem[]): void {
 }
 
 // ========================================
+// HELPER: Format JSON output
+// ========================================
+function formatJsonOutput(issues: IssueListItem[]): void {
+  console.log(JSON.stringify(issues, null, 2));
+}
+
+// ========================================
+// HELPER: Format TSV output
+// ========================================
+function formatTsvOutput(issues: IssueListItem[]): void {
+  // Header
+  console.log('identifier\ttitle\tstate\tpriority\tassignee\tteam\turl');
+
+  // Rows
+  for (const issue of issues) {
+    const identifier = issue.identifier;
+    const title = issue.title.replace(/\t/g, ' '); // Remove tabs from title
+    const state = issue.state?.name || '';
+    const priority = issue.priority !== undefined ? issue.priority.toString() : '';
+    const assignee = issue.assignee?.email || '';
+    const team = issue.team?.key || '';
+    const url = issue.url;
+
+    console.log(
+      `${identifier}\t${title}\t${state}\t${priority}\t${assignee}\t${team}\t${url}`
+    );
+  }
+}
+
+// ========================================
 // HELPER: Format priority
 // ========================================
 function formatPriority(priority?: number): string {
@@ -169,6 +231,40 @@ function formatPriority(priority?: number): string {
     case 4: return 'Low';
     default: return 'Unknown';
   }
+}
+
+// ========================================
+// HELPER: Build Linear web URL with filters
+// ========================================
+async function buildLinearWebUrl(filters: IssueListFilters, options: any): Promise<string> {
+  // For now, construct a basic URL to the team's active issues view
+  // Linear's URL structure for filtered views is complex and not fully documented
+  // We'll open to the team view which will show filtered results
+
+  let url = 'https://linear.app';
+
+  // If we have a team filter, we can be more specific
+  if (filters.teamId && options.team) {
+    // Use team key if available (from alias or direct input)
+    url += `/team/${options.team}`;
+
+    // Add filter hints in URL hash/query (Linear uses fragments)
+    const params: string[] = [];
+
+    if (filters.priority !== undefined) {
+      params.push(`priority=${filters.priority}`);
+    }
+
+    if (filters.stateId) {
+      params.push(`state=${options.state}`);
+    }
+
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
+    }
+  }
+
+  return url;
 }
 
 // ========================================
@@ -195,6 +291,23 @@ async function listIssues(options: {
   canceled?: boolean;
   allStates?: boolean;
   archived?: boolean;
+
+  // Phase 3: Advanced filters
+  label?: string | string[];
+  parent?: string;
+  rootOnly?: boolean;
+  cycle?: string;
+  search?: string;
+
+  // Phase 3: Sorting
+  sort?: string;
+  order?: string;
+
+  // Phase 3: Output format
+  format?: string;
+
+  // Phase 3: Web mode
+  web?: boolean;
 }): Promise<void> {
   try {
     // Build filters with smart defaults
@@ -217,14 +330,34 @@ async function listIssues(options: {
       filters.limit = 50; // Default
     }
 
+    // Web mode: open in browser instead of fetching
+    if (options.web) {
+      const url = await buildLinearWebUrl(filters, options);
+      console.log(`Opening Linear in browser: ${url}`);
+      await openInBrowser(url);
+      return;
+    }
+
     // Fetch issues
     const issues = await getAllIssues(filters);
 
-    // Output
-    formatTableOutput(issues);
+    // Output based on format
+    const format = options.format || 'table';
 
-    // Summary
-    console.log(`\nTotal: ${issues.length} issue(s)`);
+    switch (format) {
+      case 'json':
+        formatJsonOutput(issues);
+        break;
+      case 'tsv':
+        formatTsvOutput(issues);
+        break;
+      case 'table':
+      default:
+        formatTableOutput(issues);
+        // Summary only for table format
+        console.log(`\nTotal: ${issues.length} issue(s)`);
+        break;
+    }
 
   } catch (error) {
     showError(error instanceof Error ? error.message : 'Unknown error');
@@ -238,7 +371,7 @@ async function listIssues(options: {
 export function registerIssueListCommand(program: Command): void {
   program
     .command('list')
-    .description('List issues with smart defaults and filtering')
+    .description('List issues with smart defaults, filtering, and multiple output formats')
 
     // Pagination
     .option('-l, --limit <number>', 'Maximum number of issues to return (default: 50, max: 250)')
@@ -261,12 +394,30 @@ export function registerIssueListCommand(program: Command): void {
     .option('--all-states', 'Show issues in all states (active, completed, canceled)')
     .option('--archived', 'Include archived issues (default: exclude archived)')
 
+    // Phase 3: Advanced filters
+    .option('--label <id|alias>', 'Filter by label (repeatable for multiple labels)', collect, [])
+    .option('--parent <identifier>', 'Show sub-issues of a parent issue (ENG-123 or UUID)')
+    .option('--root-only', 'Show only root issues (no parent)')
+    .option('--cycle <id|alias>', 'Filter by cycle')
+    .option('--search <query>', 'Full-text search in issue title and description')
+
+    // Phase 3: Sorting
+    .option('--sort <field>', 'Sort by field: priority, created, updated, due (default: priority)')
+    .option('--order <direction>', 'Sort order: asc or desc (default: desc)')
+
+    // Phase 3: Output format
+    .option('-f, --format <type>', 'Output format: table, json, or tsv (default: table)')
+
+    // Phase 3: Web mode
+    .option('-w, --web', 'Open Linear in browser with filters applied instead of listing')
+
     .addHelpText('after', `
 Smart Defaults (applied automatically unless overridden):
   • Assignee: Current user ("me") - override with --assignee or --all-assignees
   • Team: defaultTeam from config - override with --team
   • Status: Active issues only (triage, backlog, unstarted, started)
   • Archived: Excluded by default - include with --archived
+  • Sort: Priority descending - override with --sort and --order
 
 Filter Precedence:
   • Explicit --assignee overrides "me" default (no --all-assignees needed)
@@ -286,7 +437,7 @@ Active Filter Definition:
 
 Examples:
   $ linear-create issue list
-  # Shows: Your active issues in default team
+  # Shows: Your active issues in default team, sorted by priority
 
   $ linear-create issue list --all-assignees
   # Shows: All users' active issues in default team
@@ -300,11 +451,40 @@ Examples:
   $ linear-create issue list --project "Q1 Goals" --all-states
   # Shows: All issues in "Q1 Goals" project (any state)
 
-  $ linear-create issue list --state in-progress --limit 100
-  # Shows: Up to 100 issues in "in-progress" state
+  $ linear-create issue list --label bug --label urgent
+  # Shows: Issues with both "bug" AND "urgent" labels
+
+  $ linear-create issue list --parent ENG-123
+  # Shows: Sub-issues of ENG-123
+
+  $ linear-create issue list --root-only --state todo
+  # Shows: Root-level Todo issues (no parent)
+
+  $ linear-create issue list --search "authentication"
+  # Shows: Issues containing "authentication" in title or description
+
+  $ linear-create issue list --cycle current
+  # Shows: Issues in the "current" cycle
+
+  $ linear-create issue list --sort due --order asc
+  # Shows: Issues sorted by due date, earliest first
+
+  $ linear-create issue list --format json | jq '.[] | {id, title, priority}'
+  # JSON output for scripting and parsing
+
+  $ linear-create issue list --format tsv | cut -f1,2
+  # TSV output for shell scripting
+
+  $ linear-create issue list --team backend --priority 1 --web
+  # Opens Linear in browser with filters applied
 
 Set defaults with:
   $ linear-create config set defaultTeam <team-id>
 `)
     .action(listIssues);
+}
+
+// Helper function for commander's repeatable option
+function collect(value: string, previous: string[]): string[] {
+  return previous.concat([value]);
 }

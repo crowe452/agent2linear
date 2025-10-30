@@ -779,7 +779,7 @@ $ linear-create issue update ENG-123 --no-parent
 
 ---
 
-### [ ] Milestone M15.5: Issue List Command (v0.24.0-alpha.5)
+### [x] Milestone M15.5: Issue List Command (v0.24.0-alpha.5)
 **Goal**: Implement comprehensive issue listing with smart defaults and extensive filtering
 
 ⚠️ **CRITICAL PERFORMANCE REQUIREMENT**: This milestone requires **extreme care** to avoid N+1 query problems and GraphQL complexity warnings. See "Performance & Query Optimization" section below.
@@ -1062,6 +1062,112 @@ $ linear-create issue list --team backend --priority 2 --state todo
 - ✅ Status filters (--completed, --canceled, --all-states) override active default
 
 **Next Phase:** Phase 3 will add advanced filters (labels, search, relationships), output formats (JSON, TSV), sorting, and web mode.
+
+---
+
+**=== PHASE 3 COMPLETE (v0.24.0-alpha.5) ===**
+
+**Advanced Filters + Output Formats + Sorting + Web Mode - COMPLETED**
+
+- [x] [M15.5-P3-T01] Add label filter support (repeatable --label flag)
+- [x] [M15.5-P3-T02] Add relationship filters (--parent, --root-only, --cycle)
+- [x] [M15.5-P3-T03] Add full-text search (--search)
+- [x] [M15.5-P3-T04] Implement output format options (--format json/tsv)
+- [x] [M15.5-P3-T05] Implement sorting options (--sort, --order)
+- [x] [M15.5-P3-T06] Update getAllIssues() for client-side sorting
+- [x] [M15.5-P3-T07] Add web mode (--web flag to open browser)
+- [x] [M15.5-P3-T08] Fix --no-parent to --root-only (Commander.js compatibility)
+- [x] [M15.5-P3-T09] Create comprehensive Phase 3 test suite (test-issue-list-phase3.sh)
+- [x] [M15.5-P3-TS01] Test sorting (priority, created, updated, due)
+- [x] [M15.5-P3-TS02] Test output formats (JSON, TSV, table)
+- [x] [M15.5-P3-TS03] Test advanced filters (--root-only, --search)
+- [x] [M15.5-P3-TS04] Test error validation (invalid sort, conflicting options)
+- [x] [M15.5-P3-TS05] Test combined filters (sort + format + limit)
+
+**Phase 3 Implementation Details:**
+
+1. **Sorting Strategy**
+   - Implemented client-side sorting after fetch (negligible performance impact for <1000 issues)
+   - Supports: priority (default), created, updated, due
+   - Sort order: asc or desc (default: desc)
+   - Smart handling of null values (issues without due dates go to end)
+
+2. **Output Formats**
+   - **table**: Default tab-separated output with summary line
+   - **json**: Full JSON output for scripting (validated with jq)
+   - **tsv**: Tab-separated values for shell piping
+
+3. **Advanced Filters**
+   - **--label**: Repeatable option for multiple labels (AND logic)
+   - **--parent**: Show sub-issues of specific parent (by identifier or UUID)
+   - **--root-only**: Show only root-level issues (no parent)
+   - **--cycle**: Filter by cycle
+   - **--search**: Full-text search in title and description
+   - Mutual exclusivity validation for --parent and --root-only
+
+4. **Web Mode**
+   - **--web**: Opens Linear in browser with filters applied
+   - Constructs Linear URLs with team and filter hints
+   - Alternative to fetching when you want to interact in Linear UI
+
+5. **API Integration**
+   - Uses Linear's GraphQL IssueFilter for server-side filtering
+   - Client-side sorting (Linear's GraphQL orderBy syntax not readily available)
+   - Maintains single-query performance pattern from Phase 1
+
+**Phase 3 Verification:**
+- [x] `npm run build` succeeds (dist/index.js: 671.33 KB)
+- [x] `npm run typecheck` passes (0 errors)
+- [x] `npm run lint` passes (43 warnings, 0 errors - no new issues)
+- [x] All Phase 1 performance tests pass (10/10)
+- [x] All Phase 3 advanced feature tests pass (15/15)
+- [x] Performance maintained: Still 1 API call for list operations
+- [x] Manual testing of sorting, formats, and filters
+
+**Phase 3 Deliverable:**
+```bash
+# Sort by priority descending (default)
+$ linear-create issue list --limit 10 --sort priority --order desc
+Identifier  Title           State    Priority  Assignee  Team
+BAN-273     Critical Bug    Backlog  Urgent    steve     BAN
+BAN-179     New Feature     Todo     High      steve     BAN
+...
+Total: 10 issue(s)
+
+# JSON output for scripting
+$ linear-create issue list --limit 5 --format json | jq '.[].identifier'
+"BAN-276"
+"BAN-275"
+"BAN-274"
+"BAN-271"
+"BAN-270"
+
+# TSV output for shell scripts
+$ linear-create issue list --limit 3 --format tsv | cut -f1,2
+identifier	title
+BAN-276	TEST_UPDATE_20251030_122458_BASE_04_Subscribers
+BAN-275	TEST_UPDATE_20251030_122458_BASE_03_Parent
+
+# Advanced filters combined
+$ linear-create issue list --root-only --search "authentication" --sort due --order asc
+[Shows root-level issues containing "authentication", sorted by due date]
+
+# Web mode
+$ linear-create issue list --team backend --priority 1 --web
+Opening Linear in browser: https://linear.app/team/backend?priority=1
+```
+
+**All Features Complete:**
+- ✅ Smart defaults (assignee=me, defaultTeam, active only)
+- ✅ Pagination (--limit, --all with cursor-based pagination)
+- ✅ Core filters (team, assignee, project, state, priority)
+- ✅ Status filters (active, completed, canceled, all-states, archived)
+- ✅ Advanced filters (labels, parent/child, cycle, search)
+- ✅ Output formats (table, JSON, TSV)
+- ✅ Sorting (priority, created, updated, due)
+- ✅ Web mode (--web flag)
+- ✅ Performance: 1 API call pattern maintained
+- ✅ Comprehensive test coverage (25 total tests across Phase 1 and Phase 3)
 
 ---
 

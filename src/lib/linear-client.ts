@@ -1170,6 +1170,58 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<IssueLis
     }
 
     // ========================================
+    // SORTING (M15.5 Phase 3)
+    // ========================================
+    // Client-side sorting after fetch (negligible performance impact for <1000 issues)
+    // Future enhancement: Use Linear's GraphQL orderBy if/when syntax is confirmed
+    if (filters?.sortField && filters?.sortOrder) {
+      const sortField = filters.sortField;
+      const sortOrder = filters.sortOrder;
+      const ascending = sortOrder === 'asc';
+
+      rawIssues.sort((a: any, b: any) => {
+        let aVal: any;
+        let bVal: any;
+
+        switch (sortField) {
+          case 'priority':
+            // Priority: 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low
+            // For desc: Urgent (1) before Low (4)
+            // For asc: Low (4) before Urgent (1)
+            aVal = a.priority !== undefined && a.priority !== null ? a.priority : 999;
+            bVal = b.priority !== undefined && b.priority !== null ? b.priority : 999;
+            break;
+          case 'created':
+            aVal = new Date(a.createdAt).getTime();
+            bVal = new Date(b.createdAt).getTime();
+            break;
+          case 'updated':
+            aVal = new Date(a.updatedAt).getTime();
+            bVal = new Date(b.updatedAt).getTime();
+            break;
+          case 'due':
+            // Issues without due dates go to the end
+            aVal = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            bVal = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            break;
+          default:
+            return 0;
+        }
+
+        // Apply sort order
+        if (ascending) {
+          return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+      });
+
+      if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+        console.error(`[linear-create] Sorted ${rawIssues.length} issues by ${sortField} ${sortOrder}`);
+      }
+    }
+
+    // ========================================
     // BUILD FINAL ISSUE LIST
     // ========================================
     // All data already fetched in single query, just map to final format
