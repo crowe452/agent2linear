@@ -397,6 +397,77 @@ export interface IssueListFilters {
 }
 
 /**
+ * Issue list item (M15.5)
+ * Formatted data for displaying issues in list view
+ * Includes all relations fetched in single query to avoid N+1 patterns
+ */
+export interface IssueListItem {
+  // Core identification
+  id: string;
+  identifier: string; // ENG-123 format
+  title: string;
+  url: string;
+
+  // Content
+  description?: string;
+
+  // Workflow
+  priority?: number; // 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low
+  estimate?: number;
+
+  // Assignment
+  assignee?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+
+  // Organization
+  team?: {
+    id: string;
+    key: string;
+    name: string;
+  };
+
+  state?: {
+    id: string;
+    name: string;
+    type: 'triage' | 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled';
+  };
+
+  project?: {
+    id: string;
+    name: string;
+  };
+
+  cycle?: {
+    id: string;
+    name: string;
+    number: number;
+  };
+
+  labels: Array<{
+    id: string;
+    name: string;
+    color?: string;
+  }>;
+
+  parent?: {
+    id: string;
+    identifier: string; // ENG-123 format
+    title: string;
+  };
+
+  // Dates
+  dueDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  canceledAt?: string;
+  archivedAt?: string;
+}
+
+/**
  * Issue view data (M15.1)
  * Formatted data for displaying issue details
  */

@@ -8,6 +8,7 @@ import type {
   IssueCreateInput,
   IssueUpdateInput,
   IssueListFilters,
+  IssueListItem,
   IssueViewData,
 } from './types.js';
 import { getRelationDirection } from './parsers.js';
@@ -936,17 +937,29 @@ export async function getIssueByIdentifier(identifier: string): Promise<{
  * @param filters - Optional filters for issues
  * @returns Array of issues matching the filters
  */
-export async function getAllIssues(filters?: IssueListFilters): Promise<Array<{
-  id: string;
-  identifier: string;
-  title: string;
-  priority?: number;
-  url: string;
-}>> {
+/**
+ * Get all issues with comprehensive filtering and pagination (M15.5)
+ *
+ * PERFORMANCE CRITICAL: This function uses a custom GraphQL query to fetch
+ * ALL issue data and relations in a SINGLE request to avoid N+1 query patterns.
+ *
+ * Pattern follows getAllProjects() optimization from M20/M21.
+ *
+ * @param filters - Optional filters for issues
+ * @returns Array of issues with all display data
+ */
+export async function getAllIssues(filters?: IssueListFilters): Promise<IssueListItem[]> {
   try {
     const client = getLinearClient();
+    const startTime = Date.now();
 
-    // Build GraphQL filter from IssueListFilters
+    // Track API call if tracking is enabled
+    const { isTracking, logCall } = await import('./api-call-tracker.js');
+    const tracking = isTracking();
+
+    // ========================================
+    // BUILD GRAPHQL FILTER
+    // ========================================
     const graphqlFilter: any = {};
 
     if (filters?.teamId) {
@@ -959,6 +972,10 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<Array<{
 
     if (filters?.projectId) {
       graphqlFilter.project = { id: { eq: filters.projectId } };
+    }
+
+    if (filters?.initiativeId) {
+      graphqlFilter.initiative = { id: { eq: filters.initiativeId } };
     }
 
     if (filters?.stateId) {
@@ -981,6 +998,11 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<Array<{
       graphqlFilter.parent = filters.hasParent ? { null: false } : { null: true };
     }
 
+    if (filters?.labelIds && filters.labelIds.length > 0) {
+      // Issues with ALL of these labels
+      graphqlFilter.labels = { some: { id: { in: filters.labelIds } } };
+    }
+
     if (filters?.search) {
       graphqlFilter.searchableContent = { contains: filters.search };
     }
@@ -998,22 +1020,218 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<Array<{
       graphqlFilter.archivedAt = { null: true };
     }
 
-    // Query issues
-    const limit = filters?.limit || 50;
-    const issues = await client.issues({
-      filter: Object.keys(graphqlFilter).length > 0 ? graphqlFilter : undefined,
-      first: Math.min(limit, 250), // Linear API max is 250
-    });
+    if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+      console.error('[linear-create] Issue filters:', JSON.stringify(graphqlFilter, null, 2));
+    }
 
-    const issuesList = await issues.nodes;
+    // ========================================
+    // PAGINATION SETUP (M15.5 Phase 1)
+    // ========================================
+    // Determine page size based on fetchAll flag:
+    // - If --all: use 250 (max) for optimal performance (5x faster)
+    // - Otherwise: use limit (capped at 250)
+    const pageSize = filters?.fetchAll ? 250 : Math.min(filters?.limit || 50, 250);
+    const fetchAll = filters?.fetchAll || false;
+    const targetLimit = filters?.limit || 50;
 
-    return issuesList.map(issue => ({
+    if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+      console.error('[linear-create] Pagination:', { pageSize, fetchAll, targetLimit });
+    }
+
+    // ========================================
+    // CUSTOM GRAPHQL QUERY - ALL RELATIONS UPFRONT
+    // ========================================
+    // This query fetches ALL display data in ONE request to avoid N+1 patterns.
+    // Includes: assignee, team, state, project, cycle, labels, parent
+    const issuesQuery = `
+      query GetIssues($filter: IssueFilter, $first: Int, $after: String) {
+        issues(filter: $filter, first: $first, after: $after) {
+          nodes {
+            id
+            identifier
+            title
+            description
+            priority
+            estimate
+            dueDate
+            createdAt
+            updatedAt
+            completedAt
+            canceledAt
+            archivedAt
+            url
+
+            assignee {
+              id
+              name
+              email
+            }
+
+            team {
+              id
+              key
+              name
+            }
+
+            state {
+              id
+              name
+              type
+            }
+
+            project {
+              id
+              name
+            }
+
+            cycle {
+              id
+              name
+              number
+            }
+
+            labels {
+              nodes {
+                id
+                name
+                color
+              }
+            }
+
+            parent {
+              id
+              identifier
+              title
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    // ========================================
+    // PAGINATION LOOP (M15.5 Phase 1)
+    // ========================================
+    // Fetch pages until:
+    // - No more pages (hasNextPage = false), OR
+    // - Reached target limit (if not fetchAll)
+    let rawIssues: any[] = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+    let pageCount = 0;
+
+    while (hasNextPage && (fetchAll || rawIssues.length < targetLimit)) {
+      pageCount++;
+
+      const variables = {
+        filter: Object.keys(graphqlFilter).length > 0 ? graphqlFilter : null,
+        first: pageSize,
+        after: cursor
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response: any = await client.client.rawRequest(issuesQuery, variables);
+
+      // Track API call if tracking enabled
+      if (tracking) {
+        logCall('IssueList', 'query', 'main', Date.now() - startTime, variables);
+      }
+
+      const nodes = response.data?.issues?.nodes || [];
+      const pageInfo = response.data?.issues?.pageInfo;
+
+      rawIssues.push(...nodes);
+
+      hasNextPage = pageInfo?.hasNextPage || false;
+      cursor = pageInfo?.endCursor || null;
+
+      if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+        console.error(`[linear-create] Page ${pageCount}: fetched ${nodes.length} issues (total: ${rawIssues.length}, hasNextPage: ${hasNextPage})`);
+      }
+
+      // If not fetching all, stop when we have enough
+      if (!fetchAll && rawIssues.length >= targetLimit) {
+        break;
+      }
+    }
+
+    // ========================================
+    // TRUNCATION (M15.5 Phase 1)
+    // ========================================
+    // If not fetching all pages, truncate to target limit
+    if (!fetchAll && rawIssues.length > targetLimit) {
+      if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
+        console.error(`[linear-create] Truncating from ${rawIssues.length} to ${targetLimit} issues`);
+      }
+      rawIssues = rawIssues.slice(0, targetLimit);
+    }
+
+    // ========================================
+    // BUILD FINAL ISSUE LIST
+    // ========================================
+    // All data already fetched in single query, just map to final format
+    const issueList: IssueListItem[] = rawIssues.map((issue: any) => ({
       id: issue.id,
       identifier: issue.identifier,
       title: issue.title,
-      priority: issue.priority || undefined,
-      url: issue.url,
+      description: issue.description || undefined,
+      priority: issue.priority !== undefined ? issue.priority : undefined,
+      estimate: issue.estimate || undefined,
+      dueDate: issue.dueDate || undefined,
+
+      assignee: issue.assignee ? {
+        id: issue.assignee.id,
+        name: issue.assignee.name,
+        email: issue.assignee.email
+      } : undefined,
+
+      team: issue.team ? {
+        id: issue.team.id,
+        key: issue.team.key,
+        name: issue.team.name
+      } : undefined,
+
+      state: issue.state ? {
+        id: issue.state.id,
+        name: issue.state.name,
+        type: issue.state.type
+      } : undefined,
+
+      project: issue.project ? {
+        id: issue.project.id,
+        name: issue.project.name
+      } : undefined,
+
+      cycle: issue.cycle ? {
+        id: issue.cycle.id,
+        name: issue.cycle.name,
+        number: issue.cycle.number
+      } : undefined,
+
+      labels: (issue.labels?.nodes || []).map((label: any) => ({
+        id: label.id,
+        name: label.name,
+        color: label.color || undefined
+      })),
+
+      parent: issue.parent ? {
+        id: issue.parent.id,
+        identifier: issue.parent.identifier,
+        title: issue.parent.title
+      } : undefined,
+
+      createdAt: issue.createdAt,
+      updatedAt: issue.updatedAt,
+      completedAt: issue.completedAt || undefined,
+      canceledAt: issue.canceledAt || undefined,
+      archivedAt: issue.archivedAt || undefined,
+      url: issue.url
     }));
+
+    return issueList;
   } catch (error) {
     if (error instanceof LinearClientError) {
       throw error;

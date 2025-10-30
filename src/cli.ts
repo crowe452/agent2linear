@@ -70,13 +70,14 @@ import { setup } from './commands/setup.js';
 import { viewIssue } from './commands/issue/view.js';
 import { createIssueCommand } from './commands/issue/create.js';
 import { updateIssueCommand } from './commands/issue/update.js';
+import { registerIssueListCommand } from './commands/issue/list.js';
 
 const cli = new Command();
 
 cli
   .name('linear-create')
   .description('Command-line tool for creating Linear issues and projects')
-  .version('0.24.0-alpha.3')
+  .version('0.24.0-alpha.5.1')
   .action(() => {
     cli.help();
   });
@@ -1661,6 +1662,9 @@ Member Resolution:
   .action(async (identifier, options) => {
     await updateIssueCommand(identifier, options);
   });
+
+// Register issue list command (M15.5 Phase 1)
+registerIssueListCommand(issue);
 
 // Setup command
 cli

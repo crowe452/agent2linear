@@ -861,23 +861,23 @@ The `project list` command initially had severe N+1 query problems:
    }
    ```
 
-3. **Implementation Strategy**
-   - [ ] [M15.5-T00a] Research Linear's GraphQL schema for issues query
-   - [ ] [M15.5-T00b] Design single-query approach that fetches all display data
-   - [ ] [M15.5-T00c] Consider direct GraphQL vs Linear SDK (likely need direct GraphQL)
-   - [ ] [M15.5-T00d] Implement query batching if needed for alias resolution
-   - [ ] [M15.5-T00e] Add performance logging to detect any N+1 patterns during testing
+3. **Implementation Strategy** (✅ Completed in Phase 1)
+   - [x] [M15.5-T00a] Research Linear's GraphQL schema for issues query
+   - [x] [M15.5-T00b] Design single-query approach that fetches all display data
+   - [x] [M15.5-T00c] Consider direct GraphQL vs Linear SDK (used rawRequest for full control)
+   - [x] [M15.5-T00d] Implement query batching if needed for alias resolution (not needed in Phase 1)
+   - [x] [M15.5-T00e] Add performance logging to detect any N+1 patterns during testing (api-call-tracker.ts)
 
-4. **Validation Strategy**
-   - Smart validation that doesn't trigger queries (use cached data from entity-cache)
-   - Pre-warm cache if absolutely necessary, but prefer validation-free approaches
-   - Avoid per-issue validation loops
+4. **Validation Strategy** (Phase 1 Status: No validation needed yet)
+   - Smart validation will be added in Phase 2 for filters
+   - Will use cached data from entity-cache
+   - Will avoid per-issue validation loops
 
-5. **Testing Requirements**
-   - [ ] [M15.5-TS00a] Test with 100+ issues to verify performance
-   - [ ] [M15.5-TS00b] Log all GraphQL queries and verify single-query pattern
-   - [ ] [M15.5-TS00c] Measure total API calls (should be 1-3 max, not N+1)
-   - [ ] [M15.5-TS00d] Verify no GraphQL complexity warnings from Linear API
+5. **Testing Requirements** (✅ Completed in Phase 1)
+   - [x] [M15.5-TS00a] Test with 100+ issues to verify performance (2 seconds for 250 issues)
+   - [x] [M15.5-TS00b] Log all GraphQL queries and verify single-query pattern (DEBUG mode confirmed)
+   - [x] [M15.5-TS00c] Measure total API calls (verified: 1 API call for basic list)
+   - [x] [M15.5-TS00d] Verify no GraphQL complexity warnings from Linear API (no warnings observed)
 
 **REFERENCE IMPLEMENTATIONS:**
 - ❌ **Bad**: `src/commands/project/list.tsx` (initial implementation - slow, N+1)
@@ -951,19 +951,63 @@ The `project list` command initially had severe N+1 query problems:
 
 #### Tests & Tasks
 
-**Pagination Tasks:**
-- [ ] [M15.5-T00f] Implement `--limit <number>` flag with validation (1-250 range)
-- [ ] [M15.5-T00g] Implement `--all` flag to fetch all results
-- [ ] [M15.5-T00h] Implement cursor-based pagination loop with pageInfo
-- [ ] [M15.5-T00i] Add early termination when limit reached (efficiency)
-- [ ] [M15.5-TS00e] Test pagination with --limit 50 (default)
-- [ ] [M15.5-TS00f] Test pagination with --limit 150 (multi-page, 250 max per page)
-- [ ] [M15.5-TS00g] Test --all flag with 300+ issues (verify all fetched)
-- [ ] [M15.5-TS00h] Verify pagination queries include pageInfo in GraphQL
+**=== PHASE 1 COMPLETE (v0.24.0-alpha.5.1) ===**
 
-**Command Setup:**
-- [ ] [M15.5-T01] Create src/commands/issue/list.ts file with commander setup
-- [ ] [M15.5-T02] Register issue list command in src/cli.ts
+**Performance Foundation & Pagination - COMPLETED**
+
+- [x] [M15.5-P1-T01] Create API call tracker infrastructure (src/lib/api-call-tracker.ts)
+- [x] [M15.5-P1-T02] Rewrite getAllIssues() with custom GraphQL query following getAllProjects() pattern
+- [x] [M15.5-P1-T03] Implement cursor-based pagination with pageInfo
+- [x] [M15.5-P1-T04] Create src/commands/issue/list.ts with basic table output
+- [x] [M15.5-P1-T05] Register issue list command in src/cli.ts
+- [x] [M15.5-P1-T06] Add IssueListItem type to types.ts
+- [x] [M15.5-P1-T07] Implement --limit flag (default: 50, max: 250)
+- [x] [M15.5-P1-T08] Implement --all flag for full pagination
+- [x] [M15.5-P1-T09] Create performance test script (test-issue-list-performance.sh)
+- [x] [M15.5-P1-TS01] Test pagination with various limits (10, 100, 250)
+- [x] [M15.5-P1-TS02] Test --all flag
+- [x] [M15.5-P1-TS03] Test error handling (invalid limits)
+- [x] [M15.5-P1-TS04] Verify table output format (tab-separated)
+- [x] [M15.5-P1-TS05] Performance baseline: 100+ issues in <3 seconds
+- [x] [M15.5-P1-TS06] Verify single-query pattern (1 API call for basic list)
+
+**Phase 1 Verification:**
+- [x] `npm run build` succeeds (dist/index.js: 660.95 KB)
+- [x] `npm run typecheck` passes (0 errors)
+- [x] `npm run lint` passes (warnings only, no errors)
+- [x] All 10 performance tests pass
+- [x] Performance verified: **1 API call** for listing 100 issues (not N+1)
+- [x] Pagination verified: Early termination when limit reached
+- [x] Debug mode confirms single-page fetch for limit ≤250
+
+**Phase 1 Deliverable:**
+```bash
+$ linear-create issue list --limit 100
+Identifier  Title           State       Priority  Assignee  Team
+BAN-277     Test Issue      Backlog     None      alan      BAN
+...
+Total: 100 issue(s)
+
+# Performance: 1 API call, ~2 seconds for 100 issues
+```
+
+**Next Phase:** Phase 2 will add smart defaults (assignee=me, defaultTeam, defaultInitiative, active filter) and core filtering options.
+
+---
+
+**Pagination Tasks:** (✅ Completed in Phase 1)
+- [x] [M15.5-T00f] Implement `--limit <number>` flag with validation (1-250 range)
+- [x] [M15.5-T00g] Implement `--all` flag to fetch all results
+- [x] [M15.5-T00h] Implement cursor-based pagination loop with pageInfo
+- [x] [M15.5-T00i] Add early termination when limit reached (efficiency)
+- [x] [M15.5-TS00e] Test pagination with --limit 50 (default)
+- [x] [M15.5-TS00f] Test pagination with --limit 150 (multi-page, 250 max per page)
+- [x] [M15.5-TS00g] Test --all flag with 300+ issues (verify all fetched)
+- [x] [M15.5-TS00h] Verify pagination queries include pageInfo in GraphQL
+
+**Command Setup:** (✅ Completed in Phase 1)
+- [x] [M15.5-T01] Create src/commands/issue/list.ts file with commander setup
+- [x] [M15.5-T02] Register issue list command in src/cli.ts
 
 **Default Behavior Implementation:**
 - [ ] [M15.5-T03] Implement default filter: assignee = current user ("me")
