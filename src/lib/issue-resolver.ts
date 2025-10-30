@@ -120,6 +120,21 @@ async function resolveIdentifierToUUID(identifier: string): Promise<string | nul
 }
 
 /**
+ * Fetch issue by UUID
+ * @param uuid - Issue UUID
+ * @returns Issue object or null if not found
+ */
+async function fetchIssueByUUID(uuid: string): Promise<any | null> {
+  try {
+    const client = getLinearClient();
+    const issue = await client.issue(uuid);
+    return issue || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Smart issue resolver with format detection:
  * 1. Check if input is UUID format → fetch by UUID
  * 2. Check if input is identifier format (ENG-123) → resolve to UUID, then fetch

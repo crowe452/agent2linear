@@ -90,6 +90,30 @@ fi
 
 echo -e "${GREEN}✓ Project is built${NC}"
 
+# Display current configuration and defaults
+echo ""
+echo -e "${BLUE}Current Configuration:${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Check for config files
+if [ -f ".linear-create/config.json" ]; then
+  echo -e "${YELLOW}Project config found: .linear-create/config.json${NC}"
+  cat .linear-create/config.json | jq . 2>/dev/null || cat .linear-create/config.json
+  echo ""
+fi
+
+if [ -f "$HOME/.config/linear-create/config.json" ]; then
+  echo -e "${YELLOW}Global config found: ~/.config/linear-create/config.json${NC}"
+  cat "$HOME/.config/linear-create/config.json" | jq . 2>/dev/null || cat "$HOME/.config/linear-create/config.json"
+  echo ""
+fi
+
+# Show config list
+echo -e "${BLUE}Active Configuration:${NC}"
+node dist/index.js config list 2>&1 | head -30
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
 # Get issue identifier if not provided
 if [ -z "$ISSUE_IDENTIFIER" ]; then
   echo ""
