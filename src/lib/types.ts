@@ -328,24 +328,24 @@ export interface IssueUpdateInput {
 
   // Priority & estimation
   priority?: number;
-  estimate?: number;
+  estimate?: number | null; // Allow null to clear estimate
 
   // Workflow fields
   stateId?: string;
 
   // Assignment fields
-  assigneeId?: string;
+  assigneeId?: string | null; // Allow null to unassign
   subscriberIds?: string[]; // Replace all subscribers
 
   // Organization fields
   teamId?: string; // Move to different team
-  projectId?: string;
-  cycleId?: string;
-  parentId?: string;
+  projectId?: string | null; // Allow null to remove from project
+  cycleId?: string | null; // Allow null to remove from cycle
+  parentId?: string | null; // Allow null to remove parent (make root issue)
   labelIds?: string[]; // Replace all labels
 
   // Date fields
-  dueDate?: string;
+  dueDate?: string | null; // Allow null to clear due date
 
   // Lifecycle operations
   trashed?: boolean; // Move to/from trash

@@ -8,6 +8,7 @@ interface ViewOptions {
   web?: boolean;
   showComments?: boolean;
   showHistory?: boolean;
+  quiet?: boolean;
 }
 
 /**
@@ -49,6 +50,13 @@ function formatPriority(priority?: number): string {
  */
 export async function viewIssue(identifier: string, options: ViewOptions = {}) {
   try {
+    // Validate conflicting output modes
+    if (options.json && options.web) {
+      console.error('❌ Error: Cannot use --json and --web together');
+      console.error('   Use either --json (for JSON output) or --web (open in browser)');
+      process.exit(1);
+    }
+
     // Resolve identifier to UUID (handles both ENG-123 and UUID formats)
     const resolveResult = await resolveIssueIdentifier(identifier);
 
@@ -63,13 +71,18 @@ export async function viewIssue(identifier: string, options: ViewOptions = {}) {
 
     const { issueId, resolvedBy, originalInput } = resolveResult;
 
+    // Suppress status messages when in JSON mode or quiet mode
+    const silent = options.json || options.quiet;
+
     // Show resolution message if identifier was used
-    if (resolvedBy === 'identifier' && originalInput !== issueId) {
+    if (!silent && resolvedBy === 'identifier' && originalInput !== issueId) {
       console.log(`\n📎 Resolved identifier "${originalInput}" to issue ${issueId.substring(0, 8)}...`);
     }
 
     // Fetch full issue data
-    console.log(`🔍 Fetching issue details...\n`);
+    if (!silent) {
+      console.log(`🔍 Fetching issue details...\n`);
+    }
     const issue = await getFullIssueById(issueId);
 
     if (!issue) {
@@ -188,8 +201,7 @@ export async function viewIssue(identifier: string, options: ViewOptions = {}) {
     if (issue.children.length > 0) {
       console.log(`⬇️  Sub-issues (${issue.children.length}):`);
       for (const child of issue.children) {
-        // Note: child.state is a Promise, need to handle properly
-        const stateName = typeof child.state === 'string' ? child.state : 'Unknown';
+        const stateName = child.state;
         console.log(`   • ${child.identifier}: ${child.title} [${stateName}]`);
       }
       console.log('');

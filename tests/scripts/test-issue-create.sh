@@ -139,16 +139,16 @@ fi
 
 echo "Using test team: $TEST_TEAM_ID (key: $TEST_TEAM_KEY)"
 
-# Get workflow states for the team
-STATES_JSON=$($CLI_CMD workflow-states list --format json 2>/dev/null || echo "[]")
+# Get workflow states for the team (filtered by team to avoid team mismatch)
+STATES_JSON=$($CLI_CMD workflow-states list --team "$TEST_TEAM_ID" --format json 2>/dev/null || echo "[]")
 TEST_STATE_ID=$(echo "$STATES_JSON" | node -e "const data=require('fs').readFileSync(0,'utf-8'); const states=JSON.parse(data); console.log(states[0]?.id || '')")
 
 if [ -n "$TEST_STATE_ID" ]; then
     echo "Using test state: $TEST_STATE_ID"
 fi
 
-# Get issue labels
-LABELS_JSON=$($CLI_CMD issue-labels list --format json 2>/dev/null || echo "[]")
+# Get issue labels (filtered by team to avoid team mismatch)
+LABELS_JSON=$($CLI_CMD issue-labels list --team "$TEST_TEAM_ID" --format json 2>/dev/null || echo "[]")
 TEST_LABEL_ID=$(echo "$LABELS_JSON" | node -e "const data=require('fs').readFileSync(0,'utf-8'); const labels=JSON.parse(data); console.log(labels[0]?.id || '')")
 TEST_LABEL2_ID=$(echo "$LABELS_JSON" | node -e "const data=require('fs').readFileSync(0,'utf-8'); const labels=JSON.parse(data); console.log(labels[1]?.id || '')")
 
@@ -559,7 +559,50 @@ else
 fi
 
 # ============================================================
-# SUCCESS TESTS - GROUP 8: COMPLEX COMBINATIONS
+# SUCCESS TESTS - GROUP 8: TEMPLATE OPTIONS
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: Template Options"
+echo "=========================================="
+echo ""
+
+# Note: Template tests require templates to exist in workspace
+# These will be skipped if no templates are available
+TEMPLATE_LIST=$($CLI_CMD templates list --json 2>/dev/null || echo "[]")
+TEST_TEMPLATE_ID=$(echo "$TEMPLATE_LIST" | grep -oE '"id":"[^"]+' | head -1 | cut -d'"' -f4)
+
+if [ -n "$TEST_TEMPLATE_ID" ]; then
+    run_test \
+        "Template: Apply template by ID" \
+        "$CLI_CMD issue create --title '${TEST_PREFIX}_Template_ID' --team $TEST_TEAM_ID --template $TEST_TEMPLATE_ID"
+
+    # Try to get template name for alias test
+    TEST_TEMPLATE_NAME=$(echo "$TEMPLATE_LIST" | grep -oE '"name":"[^"]+' | head -1 | cut -d'"' -f4)
+
+    if [ -n "$TEST_TEMPLATE_NAME" ]; then
+        # Create temporary alias for template
+        $CLI_CMD alias add template test-template "$TEST_TEMPLATE_ID" --skip-validation 2>/dev/null || true
+
+        run_test \
+            "Template: Apply template by alias" \
+            "$CLI_CMD issue create --title '${TEST_PREFIX}_Template_Alias' --team $TEST_TEAM_ID --template test-template"
+
+        # Cleanup template alias
+        $CLI_CMD alias remove template test-template 2>/dev/null || true
+    else
+        echo "Skipping template alias test (no template name available)"
+        ((SKIPPED++))
+    fi
+else
+    echo "Skipping template tests (no templates available in workspace)"
+    ((SKIPPED+=2))
+fi
+
+echo ""
+
+# ============================================================
+# SUCCESS TESTS - GROUP 9: COMPLEX COMBINATIONS
 # ============================================================
 
 echo "=========================================="
@@ -588,7 +631,7 @@ run_test \
     "$CLI_CMD issue create --title '${TEST_PREFIX}_33_KitchenSink' --team $TEST_TEAM_ID --description 'Full test' --priority 1 --estimate 13 --due-date 2025-12-01"
 
 # ============================================================
-# ERROR TESTS - GROUP 9: VALIDATION ERRORS
+# ERROR TESTS - GROUP 10: VALIDATION ERRORS
 # ============================================================
 
 echo "=========================================="
@@ -601,10 +644,21 @@ run_test \
     "$CLI_CMD issue create --team $TEST_TEAM_ID" \
     "true"
 
-run_test \
-    "Error: Missing team (no default configured)" \
-    "$CLI_CMD issue create --title '${TEST_PREFIX}_Error_NoTeam' 2>&1 | grep -v defaultTeam || true" \
-    "true"
+# Check if defaultTeam is configured in config
+if grep -q '"defaultTeam"' ~/.config/linear-create/config.json 2>/dev/null; then
+    echo ""
+    echo "=================================================="
+    echo -e "${BLUE}TEST #35: Error: Missing team (no default configured)${NC}"
+    echo "COMMAND: (skipped - defaultTeam is configured)"
+    echo "--------------------------------------------------"
+    echo -e "${YELLOW}⊘ SKIPPED (defaultTeam is configured in ~/.config/linear-create/config.json)${NC}"
+    ((SKIPPED++))
+else
+    run_test \
+        "Error: Missing team (no default configured)" \
+        "$CLI_CMD issue create --title '${TEST_PREFIX}_Error_NoTeam'" \
+        "true"
+fi
 
 run_test \
     "Error: Invalid priority (out of range)" \

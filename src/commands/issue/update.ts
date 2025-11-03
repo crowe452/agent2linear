@@ -334,7 +334,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
     }
 
     if (options.noEstimate) {
-      updates.estimate = null as any; // Linear SDK accepts null to clear field
+      updates.estimate = null; // Linear SDK accepts null to clear field
       console.log(`📊 Clearing estimate`);
     }
 
@@ -398,7 +398,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
     }
 
     if (options.noDueDate) {
-      updates.dueDate = null as any; // Linear SDK accepts null to clear field
+      updates.dueDate = null; // Linear SDK accepts null to clear field
       console.log(`📅 Clearing due date`);
     }
 
@@ -431,7 +431,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
     }
 
     if (options.noAssignee) {
-      updates.assigneeId = null as any; // Linear SDK accepts null to clear field
+      updates.assigneeId = null; // Linear SDK accepts null to clear field
       console.log(`👤 Removing assignee`);
     }
 
@@ -548,7 +548,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
     }
 
     if (options.noProject) {
-      updates.projectId = null as any; // Linear SDK accepts null to clear field
+      updates.projectId = null; // Linear SDK accepts null to clear field
       console.log(`📋 Removing from project`);
     }
 
@@ -577,7 +577,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
     }
 
     if (options.noCycle) {
-      updates.cycleId = null as any; // Linear SDK accepts null to clear field
+      updates.cycleId = null; // Linear SDK accepts null to clear field
       console.log(`🔁 Removing from cycle`);
     }
 
@@ -607,7 +607,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
     }
 
     if (options.noParent) {
-      updates.parentId = null as any; // Linear SDK accepts null to clear field
+      updates.parentId = null; // Linear SDK accepts null to clear field
       console.log(`🔗 Removing parent (making root issue)`);
     }
 
