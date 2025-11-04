@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI commands**: Both `agent2linear` and `a2l` (short alias) are now available
 - **Repository**: Moved to https://github.com/smorin/agent2linear
 - **npm package**: Published as `agent2linear` for better discoverability
+- **Publishing**: Added `np` for automated releases (`npm run release`)
+- **License**: Added MIT license file for npm compliance
 - All documentation and examples updated to reflect new naming
 
 ### Added - Issue Commands Complete (M15)

@@ -2,21 +2,171 @@
 
 Command-line tool for creating Linear issues and projects with support for initiatives. Designed for AI agents and automation.
 
-## Installation
+---
 
-### For End Users
+## 🎯 Why Aliases? (The Killer Feature)
 
-Install globally via npm:
+**The Problem**: Linear uses UUIDs everywhere. They're impossible to remember and painful for both humans and AI agents.
 
+**The Solution**: agent2linear lets you use friendly aliases instead of UUIDs.
+
+### Before vs After
+
+```bash
+# ❌ Without aliases (UUID Hell)
+a2l project create \
+  --title "Mobile Redesign" \
+  --team team_9b2e5f8a-c3d1-4e6f-8a9b-2c3d4e5f6a7b \
+  --initiative init_4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a \
+  --status status_3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+
+# ✅ With aliases (Clean & Readable)
+a2l project create \
+  --title "Mobile Redesign" \
+  --team mobile \
+  --initiative q2-product \
+  --status planned
+```
+
+### Benefits
+
+**For Humans:**
+- 🧠 **Memorable**: `--team backend` vs `--team team_9b2e5f8a...`
+- 📖 **Self-documenting**: Commands are readable without looking up IDs
+- ⚡ **Faster**: Type less, work faster
+
+**For AI Agents (Why this tool exists!):**
+- 💭 **Context persistence**: AI remembers "backend" across conversations, not UUIDs
+- 🎯 **Fewer errors**: Less likely to corrupt "backend" than a 36-character UUID
+- 🪙 **Token efficient**: Aliases save tokens in AI context windows
+- 🗣️ **Natural language**: Maps to how humans describe things
+
+### What You Can Alias
+
+Create aliases for **11 entity types**: `team`, `initiative`, `project`, `member`, `workflow-state`, `project-status`, `issue-label`, `project-label`, `issue-template`, `project-template`, `cycle`
+
+### Quick Start with Aliases
+
+The setup wizard automatically creates helpful aliases:
+
+```bash
+a2l setup
+# Auto-creates aliases for:
+#   - Workflow states (todo, in-progress, done, canceled)
+#   - Project statuses (planned, started, completed, paused)
+#   - Team members (john-smith, jane-doe)
+```
+
+**Manual alias management:**
+
+```bash
+# Add aliases
+a2l alias add team backend team_abc123
+
+# Bulk sync (auto-generates from names)
+a2l teams sync-aliases
+
+# List aliases
+a2l alias list
+a2l alias list teams
+```
+
+**💡 Learn more**: See the [Aliases](#aliases) section for full documentation.
+
+---
+
+## ⚡ Quick Start (5 minutes)
+
+Get up and running with agent2linear in 3 easy steps:
+
+### Step 1: Install (or use with npx)
+
+**Option A: Global Install** (recommended for frequent use)
 ```bash
 npm install -g agent2linear
 ```
 
-Or use without installing:
+**Option B: Use with npx** (no installation needed - great for trying it out!)
+```bash
+npx agent2linear --version
+```
+
+Both methods work identically. Examples below use the short alias `a2l` for convenience.
+
+### Step 2: Run the Setup Wizard
 
 ```bash
-npx agent2linear --help
+agent2linear setup
 ```
+
+**Or with npx:**
+```bash
+npx agent2linear setup
+```
+
+The interactive setup wizard will:
+- ✅ Guide you to get your Linear API key → https://linear.app/settings/api
+- ✅ Validate your connection to Linear
+- ✅ Help you select your default team
+- ✅ Optionally create helpful aliases (workflow states, members, project statuses)
+- ✅ Walk you through key features with a 7-screen tutorial
+
+**That's it!** The wizard configures everything for you.
+
+### Step 3: Start Working
+
+```bash
+# Create your first issue (auto-assigned to you!)
+a2l issue create --title "My first issue"
+
+# List YOUR assigned issues (the default - most common command!)
+a2l issue list
+
+# List all issues in your team
+a2l issue list --all
+
+# Create a project
+a2l project create --title "Q1 Goals"
+
+# Get help anytime
+a2l issue create --help
+```
+
+**🎉 You're now productive!** Explore the full documentation below for advanced features.
+
+💡 **Tip:** The setup wizard created helpful aliases for you. Try `a2l alias list` to see them.
+
+---
+
+## Installation
+
+### For End Users
+
+**Global Install** (recommended for regular use):
+
+```bash
+npm install -g agent2linear
+
+# Verify installation
+agent2linear --version
+a2l --version
+```
+
+**Use with npx** (no installation needed):
+
+```bash
+# Try it out without installing
+npx agent2linear --help
+npx agent2linear setup
+
+# Both commands work: agent2linear and a2l
+npx agent2linear issue list
+```
+
+**Which should you choose?**
+- Install globally if you'll use agent2linear frequently
+- Use npx for trying it out or one-off usage
+- Both methods provide identical functionality
 
 ### For Development
 
@@ -29,41 +179,75 @@ npm run build
 
 ## Configuration
 
-Set your Linear API key as an environment variable:
+### Recommended: Use the Setup Wizard
+
+The easiest way to configure agent2linear is with the interactive setup wizard:
+
+```bash
+agent2linear setup
+```
+
+The wizard will:
+- Guide you to get your Linear API key from https://linear.app/settings/api
+- Let you choose between saving to config file or using an environment variable
+- Validate your API key by connecting to Linear
+- Help you select your default team interactively
+- Optionally create helpful aliases for workflow states, members, and project statuses
+- Provide a guided tour of features
+
+### Alternative: Manual Configuration
+
+If you prefer manual setup, you can set your Linear API key as an environment variable:
 
 ```bash
 export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
 ```
 
-## Usage
-
-The CLI is available via two commands:
-- `agent2linear` - Full command name
-- `a2l` - Short alias for convenience
+Or use the interactive config editor:
 
 ```bash
-# Show help (both work identically)
-agent2linear --help
-a2l --help
-
-# List initiatives (interactive)
-agent2linear initiatives list
-a2l initiatives list
-
-# Set default initiative
-agent2linear initiatives set <id>
-
-# Create a project (interactive)
-agent2linear project create
-
-# Create a project (non-interactive)
-agent2linear project create --title "My Project" --description "Description" --state planned
-
-# Show configuration
-agent2linear config show
+agent2linear config edit
 ```
 
-**Note**: All examples below use `agent2linear`, but `a2l` works identically as a shorter alternative.
+**Configuration files:**
+- Global: `~/.config/agent2linear/config.json`
+- Project: `.agent2linear/config.json`
+
+**See also:** Run `agent2linear config --help` for all configuration options.
+
+## Usage
+
+The CLI provides two command names that work identically:
+- `agent2linear` - Full command name
+- `a2l` - Short alias (used in most examples for brevity)
+
+### Common Commands
+
+```bash
+# Get help
+a2l --help
+a2l issue --help
+a2l issue create --help
+
+# Work with issues (most common workflows)
+a2l issue list                           # List YOUR assigned issues
+a2l issue list --all                     # List all team issues
+a2l issue create --title "Fix bug"       # Create issue (auto-assigned to you)
+a2l issue view ENG-123                   # View issue details
+a2l issue update ENG-123 --state done    # Update issue
+
+# Work with projects
+a2l project create --title "Q1 Goals"    # Create project
+a2l project list                         # List all projects
+a2l project view "My Project"            # View project by name
+
+# Configuration
+a2l config list                          # Show current config
+a2l config edit                          # Interactive config editor
+a2l setup                                # Run setup wizard again
+```
+
+**💡 Tip:** Most examples in this README use the short `a2l` alias for convenience. You can use `agent2linear` anywhere you see `a2l`.
 
 ## Issue Commands
 
@@ -878,6 +1062,58 @@ npx vitest run --reporter=verbose
   - Functions: 100%
   - Lines: 99.04%
 - Coverage reports available in `coverage/` directory after running `npm run test:coverage`
+
+## Publishing
+
+This project uses [np](https://github.com/sindresorhus/np) for automated publishing to npm.
+
+**Prerequisites:**
+- npm account with publish access
+- Logged in: `npm whoami`
+- Clean git working directory
+
+**Release Process:**
+
+```bash
+# Interactive release with np (recommended)
+npm run release
+
+# np will automatically:
+# 1. Run tests and build (via prepublishOnly)
+# 2. Bump version in package.json
+# 3. Create git tag
+# 4. Push to GitHub
+# 5. Publish to npm
+# 6. Create GitHub release
+```
+
+**Manual Publishing (not recommended):**
+
+```bash
+# Ensure everything is ready
+npm run typecheck
+npm run lint
+npm run build
+npm run test
+
+# Publish to npm
+npm publish
+
+# Tag and push
+git tag v0.24.0
+git push origin main --tags
+```
+
+**After Publishing:**
+
+```bash
+# Verify package is available
+npm view agent2linear
+
+# Test installation
+npx agent2linear --version
+npx a2l --version
+```
 
 ## Project Status
 
