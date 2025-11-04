@@ -42,7 +42,7 @@ export function ProjectForm({ onSubmit, defaultInitiative, defaultTeam }: Projec
     setStep('state');
   };
 
-  const handleStateSelect = (item: { value: string }) => {
+  const handleStateSelect = (_item: { value: string }) => {
     setStep('complete');
 
     // Submit the form

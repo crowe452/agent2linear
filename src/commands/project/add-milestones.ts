@@ -52,7 +52,7 @@ export async function addMilestones(projectNameOrId: string, options: AddMilesto
       showError(
         'No milestone template specified',
         'Provide a template using --template flag or set a default:\n' +
-        '  $ linear-create config set defaultMilestoneTemplate <template-name>'
+        '  $ agent2linear config set defaultMilestoneTemplate <template-name>'
       );
       process.exit(1);
     }
@@ -62,10 +62,8 @@ export async function addMilestones(projectNameOrId: string, options: AddMilesto
     const result = getMilestoneTemplate(templateName);
 
     if (!result) {
-      showError(
-        `Milestone template not found: ${templateName}`,
-        'Use "linear-create milestone-templates list" to see available templates'
-      );
+      const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+      showError(formatEntityNotFoundError('milestone template', templateName, 'milestone-templates list'));
       process.exit(1);
     }
 

@@ -1,10 +1,28 @@
-# linear-create
+# agent2linear
 
-Command-line tool for creating Linear issues and projects with support for initiatives.
+Command-line tool for creating Linear issues and projects with support for initiatives. Designed for AI agents and automation.
 
 ## Installation
 
+### For End Users
+
+Install globally via npm:
+
 ```bash
+npm install -g agent2linear
+```
+
+Or use without installing:
+
+```bash
+npx agent2linear --help
+```
+
+### For Development
+
+```bash
+git clone https://github.com/smorin/agent2linear.git
+cd agent2linear
 npm install
 npm run build
 ```
@@ -19,25 +37,33 @@ export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
 
 ## Usage
 
+The CLI is available via two commands:
+- `agent2linear` - Full command name
+- `a2l` - Short alias for convenience
+
 ```bash
-# Show help
-linear-create --help
+# Show help (both work identically)
+agent2linear --help
+a2l --help
 
 # List initiatives (interactive)
-linear-create initiatives list
+agent2linear initiatives list
+a2l initiatives list
 
 # Set default initiative
-linear-create initiatives set <id>
+agent2linear initiatives set <id>
 
 # Create a project (interactive)
-linear-create project create
+agent2linear project create
 
 # Create a project (non-interactive)
-linear-create project create --title "My Project" --description "Description" --state planned
+agent2linear project create --title "My Project" --description "Description" --state planned
 
 # Show configuration
-linear-create config show
+agent2linear config show
 ```
+
+**Note**: All examples below use `agent2linear`, but `a2l` works identically as a shorter alternative.
 
 ## Issue Commands
 
@@ -50,17 +76,17 @@ Create issues with auto-assignment, full field support, and intelligent validati
 **Basic Examples:**
 ```bash
 # Minimal (auto-assigns to you, uses defaultTeam if configured)
-linear-create issue create --title "Fix login bug"
+agent2linear issue create --title "Fix login bug"
 
 # Standard creation
-linear-create issue create \
+agent2linear issue create \
   --title "Add OAuth support" \
   --team backend \
   --priority 2 \
   --estimate 8
 
 # Full-featured
-linear-create issue create \
+agent2linear issue create \
   --title "Implement auth" \
   --team backend \
   --description "Add OAuth2 providers" \
@@ -78,7 +104,7 @@ linear-create issue create \
 - **Config defaults**: Use `defaultTeam` and `defaultProject` to simplify creation
 - **Validation**: Team-aware validation for states and projects
 
-For full documentation: `linear-create issue create --help`
+For full documentation: `agent2linear issue create --help`
 
 ### Issue View
 
@@ -86,13 +112,13 @@ View comprehensive issue details in terminal or browser.
 
 ```bash
 # View by identifier
-linear-create issue view ENG-123
+agent2linear issue view ENG-123
 
 # View with JSON output
-linear-create issue view ENG-123 --json
+agent2linear issue view ENG-123 --json
 
 # Open in browser
-linear-create issue view ENG-123 --web
+agent2linear issue view ENG-123 --web
 ```
 
 ### Issue Update
@@ -102,12 +128,12 @@ Update existing issues with comprehensive field support and smart validation.
 **Basic Examples:**
 ```bash
 # Update single field
-linear-create issue update ENG-123 --title "New title"
-linear-create issue update ENG-123 --priority 1
-linear-create issue update ENG-123 --state done
+agent2linear issue update ENG-123 --title "New title"
+agent2linear issue update ENG-123 --priority 1
+agent2linear issue update ENG-123 --state done
 
 # Update multiple fields
-linear-create issue update ENG-123 \
+agent2linear issue update ENG-123 \
   --title "Updated title" \
   --priority 2 \
   --estimate 5 \
@@ -117,34 +143,34 @@ linear-create issue update ENG-123 \
 **Advanced Examples:**
 ```bash
 # Change assignment
-linear-create issue update ENG-123 --assignee john@company.com
-linear-create issue update ENG-123 --no-assignee
+agent2linear issue update ENG-123 --assignee john@company.com
+agent2linear issue update ENG-123 --no-assignee
 
 # Label management (3 modes)
-linear-create issue update ENG-123 --labels "bug,urgent"           # Replace all
-linear-create issue update ENG-123 --add-labels "feature"          # Add to existing
-linear-create issue update ENG-123 --remove-labels "wontfix"       # Remove specific
-linear-create issue update ENG-123 --add-labels "new" --remove-labels "old"  # Both
+agent2linear issue update ENG-123 --labels "bug,urgent"           # Replace all
+agent2linear issue update ENG-123 --add-labels "feature"          # Add to existing
+agent2linear issue update ENG-123 --remove-labels "wontfix"       # Remove specific
+agent2linear issue update ENG-123 --add-labels "new" --remove-labels "old"  # Both
 
 # Subscriber management (3 modes)
-linear-create issue update ENG-123 --subscribers "user1,user2"     # Replace all
-linear-create issue update ENG-123 --add-subscribers "user3"       # Add to existing
-linear-create issue update ENG-123 --remove-subscribers "user1"    # Remove specific
+agent2linear issue update ENG-123 --subscribers "user1,user2"     # Replace all
+agent2linear issue update ENG-123 --add-subscribers "user3"       # Add to existing
+agent2linear issue update ENG-123 --remove-subscribers "user1"    # Remove specific
 
 # Clear fields
-linear-create issue update ENG-123 --no-assignee --no-due-date --no-estimate
-linear-create issue update ENG-123 --no-project --no-cycle --no-parent
+agent2linear issue update ENG-123 --no-assignee --no-due-date --no-estimate
+agent2linear issue update ENG-123 --no-project --no-cycle --no-parent
 
 # Parent relationship
-linear-create issue update ENG-123 --parent ENG-100     # Make sub-issue
-linear-create issue update ENG-123 --no-parent          # Make root issue
+agent2linear issue update ENG-123 --parent ENG-100     # Make sub-issue
+agent2linear issue update ENG-123 --no-parent          # Make root issue
 
 # Move between teams
-linear-create issue update ENG-123 --team frontend --state todo
+agent2linear issue update ENG-123 --team frontend --state todo
 
 # Lifecycle operations
-linear-create issue update ENG-123 --trash              # Move to trash
-linear-create issue update ENG-123 --untrash            # Restore from trash
+agent2linear issue update ENG-123 --trash              # Move to trash
+agent2linear issue update ENG-123 --untrash            # Restore from trash
 ```
 
 **Key Features:**
@@ -155,7 +181,7 @@ linear-create issue update ENG-123 --untrash            # Restore from trash
 - **Label/subscriber patterns**: Replace, add, or remove items with distinct flags
 - **Mutual exclusivity**: Prevents conflicting flag combinations with helpful errors
 
-For full documentation: `linear-create issue update --help`
+For full documentation: `agent2linear issue update --help`
 
 ### Issue List
 
@@ -164,54 +190,54 @@ List and filter issues with smart defaults, extensive filtering, sorting, and mu
 **Basic Examples:**
 ```bash
 # Smart defaults: your assigned issues
-linear-create issue list
+agent2linear issue list
 
 # Limit results
-linear-create issue list --limit 10
+agent2linear issue list --limit 10
 
 # Filter by team
-linear-create issue list --team backend
+agent2linear issue list --team backend
 
 # Filter by state
-linear-create issue list --state "in progress"
+agent2linear issue list --state "in progress"
 ```
 
 **Advanced Filtering:**
 ```bash
 # Multiple filters
-linear-create issue list \
+agent2linear issue list \
   --team backend \
   --priority 1 \
   --state "in progress" \
   --assignee steve@company.com
 
 # Project and labels
-linear-create issue list \
+agent2linear issue list \
   --project "Q1 Goals" \
   --labels "bug,urgent"
 
 # Date filters
-linear-create issue list --due-before 2025-12-31
-linear-create issue list --created-after 2025-01-01
+agent2linear issue list --due-before 2025-12-31
+agent2linear issue list --created-after 2025-01-01
 
 # Parent/sub-issue filters
-linear-create issue list --has-parent        # Only sub-issues
-linear-create issue list --no-parent         # Only root issues
+agent2linear issue list --has-parent        # Only sub-issues
+agent2linear issue list --no-parent         # Only root issues
 ```
 
 **Sorting and Output:**
 ```bash
 # Sort options
-linear-create issue list --sort priority     # By priority (high to low)
-linear-create issue list --sort created      # By creation date (newest first)
-linear-create issue list --sort updated      # By update date
-linear-create issue list --sort identifier   # By identifier (ENG-1, ENG-2...)
+agent2linear issue list --sort priority     # By priority (high to low)
+agent2linear issue list --sort created      # By creation date (newest first)
+agent2linear issue list --sort updated      # By update date
+agent2linear issue list --sort identifier   # By identifier (ENG-1, ENG-2...)
 
 # Output formats
-linear-create issue list --format table      # Table view (default)
-linear-create issue list --format compact    # Compact view
-linear-create issue list --format json       # JSON output
-linear-create issue list --format urls       # URLs only (for scripting)
+agent2linear issue list --format table      # Table view (default)
+agent2linear issue list --format compact    # Compact view
+agent2linear issue list --format json       # JSON output
+agent2linear issue list --format urls       # URLs only (for scripting)
 ```
 
 **Key Features:**
@@ -221,7 +247,7 @@ linear-create issue list --format urls       # URLs only (for scripting)
 - **Multiple formats**: Table, compact, JSON, or URLs for scripting
 - **Performance optimized**: Batch fetching eliminates N+1 queries (11x+ API call reduction)
 
-For full documentation: `linear-create issue list --help`
+For full documentation: `agent2linear issue list --help`
 
 ## Project List & Search
 
@@ -233,7 +259,7 @@ By default, `project list` filters to show projects where **you are the lead**, 
 
 ```bash
 # Smart defaults: projects I lead in my default team/initiative
-linear-create project list
+agent2linear project list
 
 # Equivalent to (if you have defaults configured):
 # --lead <current-user-id> --team <default-team> --initiative <default-initiative>
@@ -245,16 +271,16 @@ Use these flags to bypass smart defaults and see more projects:
 
 ```bash
 # Show ALL projects (any lead) in default team/initiative
-linear-create project list --all-leads
+agent2linear project list --all-leads
 
 # Show projects I lead across ALL teams
-linear-create project list --all-teams
+agent2linear project list --all-teams
 
 # Show projects I lead across ALL initiatives
-linear-create project list --all-initiatives
+agent2linear project list --all-initiatives
 
 # Override everything - show ALL projects everywhere
-linear-create project list --all-leads --all-teams --all-initiatives
+agent2linear project list --all-leads --all-teams --all-initiatives
 ```
 
 ### Filter Options
@@ -262,55 +288,55 @@ linear-create project list --all-leads --all-teams --all-initiatives
 **Core Filters:**
 ```bash
 # Filter by team
-linear-create project list --team backend
-linear-create project list -t backend
+agent2linear project list --team backend
+agent2linear project list -t backend
 
 # Filter by initiative
-linear-create project list --initiative q1-goals
-linear-create project list -i q1-goals
+agent2linear project list --initiative q1-goals
+agent2linear project list -i q1-goals
 
 # Filter by project status
-linear-create project list --status planned
-linear-create project list -s started
+agent2linear project list --status planned
+agent2linear project list -s started
 
 # Filter by priority (0-4)
-linear-create project list --priority 1
-linear-create project list -p 2
+agent2linear project list --priority 1
+agent2linear project list -p 2
 
 # Filter by specific project lead
-linear-create project list --lead alice@company.com
-linear-create project list -l alice
+agent2linear project list --lead alice@company.com
+agent2linear project list -l alice
 
 # Filter by member (projects where someone is assigned)
-linear-create project list --member bob
-linear-create project list -m alice,bob  # Multiple members
+agent2linear project list --member bob
+agent2linear project list -m alice,bob  # Multiple members
 
 # Filter by label
-linear-create project list --label urgent
-linear-create project list --label urgent,critical  # Multiple labels
+agent2linear project list --label urgent
+agent2linear project list --label urgent,critical  # Multiple labels
 
 # Search in project name, description, or content
-linear-create project list --search "API"
-linear-create project list --search "mobile redesign"
+agent2linear project list --search "API"
+agent2linear project list --search "mobile redesign"
 ```
 
 **Date Range Filters:**
 ```bash
 # Projects starting in Q1 2025
-linear-create project list --start-after 2025-01-01 --start-before 2025-03-31
+agent2linear project list --start-after 2025-01-01 --start-before 2025-03-31
 
 # Projects targeting after June 2025
-linear-create project list --target-after 2025-06-01
+agent2linear project list --target-after 2025-06-01
 
 # Projects targeting before end of year
-linear-create project list --target-before 2025-12-31
+agent2linear project list --target-before 2025-12-31
 ```
 
 ### Output Formats
 
 **Table Format (default):**
 ```bash
-linear-create project list
+agent2linear project list
 ```
 Output:
 ```
@@ -326,47 +352,47 @@ Total: 3 projects
 **JSON Format:**
 ```bash
 # Machine-readable format for scripting
-linear-create project list --format json
-linear-create project list -f json
+agent2linear project list --format json
+agent2linear project list -f json
 
 # Example with filtering
-linear-create project list --team backend --status started --format json
+agent2linear project list --team backend --status started --format json
 ```
 
 **TSV Format:**
 ```bash
 # Tab-separated values for data processing
-linear-create project list --format tsv
-linear-create project list -f tsv > projects.tsv
+agent2linear project list --format tsv
+agent2linear project list -f tsv > projects.tsv
 ```
 
 **Interactive Mode:**
 ```bash
 # Ink UI with rich formatting
-linear-create project list --interactive
-linear-create project list -I
+agent2linear project list --interactive
+agent2linear project list -I
 ```
 
 ### Complex Filter Examples
 
 ```bash
 # Backend team projects, started status, high priority
-linear-create project list --team backend --status started --priority 1
+agent2linear project list --team backend --status started --priority 1
 
 # Projects led by specific person in any team
-linear-create project list --lead alice@company.com --all-teams
+agent2linear project list --lead alice@company.com --all-teams
 
 # Projects where Bob is assigned (as member)
-linear-create project list --member bob --all-leads
+agent2linear project list --member bob --all-leads
 
 # Search for "API" projects in backend team (any lead)
-linear-create project list --search "API" --team backend --all-leads
+agent2linear project list --search "API" --team backend --all-leads
 
 # Urgent projects targeting Q1 2025
-linear-create project list --label urgent --target-after 2025-01-01 --target-before 2025-03-31
+agent2linear project list --label urgent --target-after 2025-01-01 --target-before 2025-03-31
 
 # All projects with multiple filters
-linear-create project list \
+agent2linear project list \
   --team backend \
   --status started \
   --priority 1 \
@@ -374,7 +400,7 @@ linear-create project list \
   --label critical
 
 # Export all projects to JSON
-linear-create project list --all-teams --all-leads --all-initiatives --format json > all-projects.json
+agent2linear project list --all-teams --all-leads --all-initiatives --format json > all-projects.json
 ```
 
 ### Alias Support
@@ -383,16 +409,16 @@ All entity filters support aliases:
 
 ```bash
 # Use team alias instead of ID
-linear-create project list --team backend
+agent2linear project list --team backend
 
 # Use initiative alias
-linear-create project list --initiative q1-goals
+agent2linear project list --initiative q1-goals
 
 # Use member alias
-linear-create project list --lead alice
+agent2linear project list --lead alice
 
 # Use label alias
-linear-create project list --label urgent,critical
+agent2linear project list --label urgent,critical
 ```
 
 ### Setting Defaults
@@ -401,13 +427,13 @@ Configure default values to streamline your workflow:
 
 ```bash
 # Set default team
-linear-create config set defaultTeam backend
+agent2linear config set defaultTeam backend
 
 # Set default initiative
-linear-create config set defaultInitiative q1-goals
+agent2linear config set defaultInitiative q1-goals
 
 # Now simple list uses your defaults:
-linear-create project list
+agent2linear project list
 # Shows: projects you lead in 'backend' team within 'q1-goals' initiative
 ```
 
@@ -422,24 +448,24 @@ You can create milestone templates using the CLI (recommended) or by manually ed
 **Using the CLI (Interactive):**
 ```bash
 # Interactive mode - guided wizard
-linear-create milestone-templates create --interactive
-linear-create mtmpl create -I
+agent2linear milestone-templates create --interactive
+agent2linear mtmpl create -I
 
 # Interactive mode with project scope
-linear-create milestone-templates create --project --interactive
+agent2linear milestone-templates create --project --interactive
 ```
 
 **Using the CLI (Non-Interactive):**
 ```bash
 # Create a template with milestones
-linear-create milestone-templates create my-sprint \
+agent2linear milestone-templates create my-sprint \
   --description "Custom 2-week sprint" \
   --milestone "Planning:+1d:Define sprint goals and tasks" \
   --milestone "Development:+10d:Implementation phase" \
   --milestone "Review:+14d:Code review and deployment"
 
 # Create in project scope
-linear-create milestone-templates create team-workflow \
+agent2linear milestone-templates create team-workflow \
   --project \
   --milestone "Kickoff::Team alignment meeting" \
   --milestone "Execution:+7d:Complete assigned tasks" \
@@ -454,8 +480,8 @@ linear-create milestone-templates create team-workflow \
 **Manual Template File Creation:**
 
 Templates are stored at:
-- **Global**: `~/.config/linear-create/milestone-templates.json` - Available across all projects
-- **Project**: `.linear-create/milestone-templates.json` - Project-specific templates
+- **Global**: `~/.config/agent2linear/milestone-templates.json` - Available across all projects
+- **Project**: `.agent2linear/milestone-templates.json` - Project-specific templates
 
 **Example Template File:**
 ```json
@@ -489,31 +515,31 @@ Templates are stored at:
 **Managing Templates:**
 ```bash
 # Edit a template (interactive)
-linear-create milestone-templates edit basic-sprint
+agent2linear milestone-templates edit basic-sprint
 
 # Remove a template
-linear-create milestone-templates remove basic-sprint
-linear-create mtmpl rm old-template --yes  # Skip confirmation
+agent2linear milestone-templates remove basic-sprint
+agent2linear mtmpl rm old-template --yes  # Skip confirmation
 ```
 
 ### Using Milestone Templates
 
 ```bash
 # List all templates
-linear-create milestone-templates list
-linear-create mtmpl ls                # Short alias
+agent2linear milestone-templates list
+agent2linear mtmpl ls                # Short alias
 
 # View template details
-linear-create milestone-templates view basic-sprint
+agent2linear milestone-templates view basic-sprint
 
 # Add milestones to a project
-linear-create project add-milestones PRJ-123 --template basic-sprint
+agent2linear project add-milestones PRJ-123 --template basic-sprint
 
 # Set default template
-linear-create config set defaultMilestoneTemplate basic-sprint
+agent2linear config set defaultMilestoneTemplate basic-sprint
 
 # Use default when creating milestones
-linear-create project add-milestones PRJ-123  # Uses default template
+agent2linear project add-milestones PRJ-123  # Uses default template
 ```
 
 ### Date Offset Format
@@ -532,31 +558,31 @@ Aliases allow you to use simple, memorable names instead of long Linear IDs. For
 
 ```bash
 # Add an alias
-linear-create alias add initiative backend init_abc123xyz
-linear-create alias add team frontend team_def456uvw --project
-linear-create alias add project api proj_ghi789rst
+agent2linear alias add initiative backend init_abc123xyz
+agent2linear alias add team frontend team_def456uvw --project
+agent2linear alias add project api proj_ghi789rst
 
 # List all aliases
-linear-create alias list
+agent2linear alias list
 
 # List aliases for a specific type
-linear-create alias list initiatives
-linear-create alias list teams
+agent2linear alias list initiatives
+agent2linear alias list teams
 
 # Get the ID for an alias
-linear-create alias get initiative backend
+agent2linear alias get initiative backend
 
 # Edit aliases interactively
-linear-create alias edit           # Interactive mode - select scope, type, and alias to edit
-linear-create alias edit --global  # Edit global aliases
-linear-create alias edit --project # Edit project aliases
+agent2linear alias edit           # Interactive mode - select scope, type, and alias to edit
+agent2linear alias edit --global  # Edit global aliases
+agent2linear alias edit --project # Edit project aliases
 
 # Remove an alias
-linear-create alias remove initiative backend
-linear-create alias rm team frontend --project
+agent2linear alias remove initiative backend
+agent2linear alias rm team frontend --project
 
 # Validate all aliases
-linear-create alias list --validate
+agent2linear alias list --validate
 ```
 
 ### Using Aliases
@@ -565,20 +591,20 @@ Once configured, aliases can be used anywhere an ID is accepted:
 
 ```bash
 # Use initiative alias
-linear-create initiatives set backend
-linear-create initiatives view backend
+agent2linear initiatives set backend
+agent2linear initiatives view backend
 
 # Use team and initiative aliases in project creation
-linear-create project create --title "New API" --team backend --initiative backend-init
+agent2linear project create --title "New API" --team backend --initiative backend-init
 
 # Use team alias in selection
-linear-create teams select --id frontend
+agent2linear teams select --id frontend
 ```
 
 ### Storage Locations
 
-- **Global aliases**: `~/.config/linear-create/aliases.json` - Available across all projects
-- **Project aliases**: `.linear-create/aliases.json` - Project-specific, can be version controlled
+- **Global aliases**: `~/.config/agent2linear/aliases.json` - Available across all projects
+- **Project aliases**: `.agent2linear/aliases.json` - Project-specific, can be version controlled
 
 Project aliases take precedence over global aliases, allowing you to override global settings per-project.
 
@@ -588,15 +614,15 @@ Aliases are scoped by entity type, meaning you can use the same alias name for d
 
 ```bash
 # "backend" can refer to both an initiative and a team
-linear-create alias add initiative backend init_abc123
-linear-create alias add team backend team_xyz789
+agent2linear alias add initiative backend init_abc123
+agent2linear alias add team backend team_xyz789
 ```
 
 ## Icon Usage
 
 ### Supported Icons
 
-linear-create supports Linear's standard icon catalog for projects. Icons can be specified by name (e.g., "Checklist", "Tree", "Joystick") and are validated by Linear's API.
+agent2linear supports Linear's standard icon catalog for projects. Icons can be specified by name (e.g., "Checklist", "Tree", "Joystick") and are validated by Linear's API.
 
 **Note on Icon Validation**: This tool does NOT validate icons client-side. Icons are passed directly to Linear's API for server-side validation. This design decision was made after investigation revealed:
 
@@ -608,76 +634,76 @@ linear-create supports Linear's standard icon catalog for projects. Icons can be
 
 ```bash
 # View curated icon suggestions (for discovery only, not exhaustive)
-linear-create icons list
+agent2linear icons list
 
 # Search for specific icons
-linear-create icons list --search rocket
+agent2linear icons list --search rocket
 
 # View icons by category
-linear-create icons list --category status
+agent2linear icons list --category status
 
 # Extract icons currently used in your workspace
-linear-create icons extract --type projects
+agent2linear icons extract --type projects
 ```
 
 ### Using Icons
 
 ```bash
 # Icon names are capitalized (Linear's format)
-linear-create project create --title "My Project" --team eng --icon "Checklist"
-linear-create project create --title "API" --team backend --icon "Joystick"
-linear-create project create --title "Design" --team frontend --icon "Tree"
+agent2linear project create --title "My Project" --team eng --icon "Checklist"
+agent2linear project create --title "API" --team backend --icon "Joystick"
+agent2linear project create --title "Design" --team frontend --icon "Tree"
 
 # If an invalid icon is provided, Linear API will return a helpful error
-linear-create project create --title "Test" --team eng --icon "InvalidIcon"
+agent2linear project create --title "Test" --team eng --icon "InvalidIcon"
 # Error: Icon not found (from Linear API)
 ```
 
 ### Icon Resources
 
-- The `linear-create icons list` command shows ~67 curated icons for discovery
+- The `agent2linear icons list` command shows ~67 curated icons for discovery
 - Linear supports hundreds of standard icons beyond this curated list
 - Invalid icons will be rejected by Linear's API with clear error messages
 
 ## Date Formats
 
-linear-create supports flexible date formats for project `--start-date` and `--target-date` options, making it easy to specify dates naturally without manually calculating start-of-quarter or start-of-month dates.
+agent2linear supports flexible date formats for project `--start-date` and `--target-date` options, making it easy to specify dates naturally without manually calculating start-of-quarter or start-of-month dates.
 
 ### Supported Formats
 
 **Quarters:**
 ```bash
-linear-create project create --title "Q1 Initiative" --start-date "2025-Q1"
-linear-create project create --title "Q2 Goals" --start-date "Q2 2025"
-linear-create project create --title "Q3 Project" --start-date "q3-2025"  # Case-insensitive
+agent2linear project create --title "Q1 Initiative" --start-date "2025-Q1"
+agent2linear project create --title "Q2 Goals" --start-date "Q2 2025"
+agent2linear project create --title "Q3 Project" --start-date "q3-2025"  # Case-insensitive
 ```
 
 **Half-Years:**
 ```bash
-linear-create project create --title "H1 Strategy" --start-date "2025-H1"
-linear-create project create --title "H2 Plan" --start-date "H2 2025"
+agent2linear project create --title "H1 Strategy" --start-date "2025-H1"
+agent2linear project create --title "H2 Plan" --start-date "H2 2025"
 ```
 
 **Months:**
 ```bash
 # Numeric format
-linear-create project create --title "January Sprint" --start-date "2025-01"
+agent2linear project create --title "January Sprint" --start-date "2025-01"
 
 # Short month names
-linear-create project create --title "Feb Release" --start-date "Feb 2025"
+agent2linear project create --title "Feb Release" --start-date "Feb 2025"
 
 # Full month names
-linear-create project create --title "March Update" --start-date "March 2025"
+agent2linear project create --title "March Update" --start-date "March 2025"
 ```
 
 **Years:**
 ```bash
-linear-create project create --title "2025 Roadmap" --start-date "2025"
+agent2linear project create --title "2025 Roadmap" --start-date "2025"
 ```
 
 **ISO Dates (specific dates):**
 ```bash
-linear-create project create --title "Sprint 1" --start-date "2025-01-15"
+agent2linear project create --title "Sprint 1" --start-date "2025-01-15"
 ```
 
 ### How It Works
@@ -689,7 +715,7 @@ The date parser automatically:
 
 **Example output:**
 ```bash
-$ linear-create project create --title "Q1 Initiative" --start-date "2025-Q1"
+$ agent2linear project create --title "Q1 Initiative" --start-date "2025-Q1"
 📅 Start date: Q1 2025 (2025-01-01, resolution: quarter)
 ✅ Created project: Q1 Initiative
 ```
@@ -708,10 +734,10 @@ Linear projects support date resolutions to indicate time granularity:
 The parser **automatically sets the resolution** based on your input format:
 ```bash
 # ✅ Recommended: Let the parser auto-detect resolution
-linear-create project create --start-date "2025-Q1"      # Auto: resolution = quarter
-linear-create project create --start-date "Jan 2025"     # Auto: resolution = month
-linear-create project create --start-date "2025"         # Auto: resolution = year
-linear-create project create --start-date "2025-01-15"   # Auto: no resolution (specific date)
+agent2linear project create --start-date "2025-Q1"      # Auto: resolution = quarter
+agent2linear project create --start-date "Jan 2025"     # Auto: resolution = month
+agent2linear project create --start-date "2025"         # Auto: resolution = year
+agent2linear project create --start-date "2025-01-15"   # Auto: no resolution (specific date)
 ```
 
 #### Explicit Override (Advanced)
@@ -725,16 +751,16 @@ For advanced use cases, you can explicitly override the resolution with `--start
 ```bash
 # ⚙️ Advanced: Override auto-detection
 # Mid-month date representing Q1
-linear-create project create --start-date "2025-01-15" --start-date-resolution quarter
+agent2linear project create --start-date "2025-01-15" --start-date-resolution quarter
 
 # Resolution-only update (update command)
-linear-create project update myproject --start-date-resolution quarter
+agent2linear project update myproject --start-date-resolution quarter
 ```
 
 **Validation warnings:**
 ```bash
 # ⚠️ Conflicting format and explicit flag
-$ linear-create project create --start-date "2025-Q1" --start-date-resolution month
+$ agent2linear project create --start-date "2025-Q1" --start-date-resolution month
 ⚠️  Warning: Date format '2025-Q1' implies quarter resolution, but --start-date-resolution
     is set to 'month'. Using explicit value (month).
 ```
@@ -746,7 +772,7 @@ $ linear-create project create --start-date "2025-Q1" --start-date-resolution mo
 Invalid dates are caught with helpful error messages:
 
 ```bash
-$ linear-create project create --title "Test" --start-date "2025-Q5"
+$ agent2linear project create --title "Test" --start-date "2025-Q5"
 ❌ Invalid start date: Invalid quarter: Q5
 
 Quarter must be Q1, Q2, Q3, or Q4. Examples:

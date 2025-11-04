@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { createIssueLabel } from '../../lib/linear-client.js';
 import { resolveAlias } from '../../lib/aliases.js';
-import { isValidHexColor, normalizeHexColor } from '../../lib/colors.js';
 
 export function createIssueLabelCommand(program: Command) {
   program
@@ -18,12 +17,13 @@ export function createIssueLabelCommand(program: Command) {
           process.exit(1);
         }
 
-        if (!isValidHexColor(options.color)) {
-          console.error(`❌ Error: Invalid color format: ${options.color}`);
+        const { validateAndNormalizeColor } = await import('../../lib/validators.js');
+        const colorResult = validateAndNormalizeColor(options.color);
+        if (!colorResult.valid) {
+          console.error(`❌ Error: ${colorResult.error}`);
           process.exit(1);
         }
-
-        const color = normalizeHexColor(options.color);
+        const color = colorResult.value!;
         let teamId = options.team;
         if (teamId) {
           teamId = resolveAlias('team', teamId);

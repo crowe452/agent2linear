@@ -5,7 +5,7 @@ import { findProjectByName, getProjectById } from './linear-client.js';
 import { getConfig } from './config.js';
 import type { ProjectResult } from './linear-client.js';
 
-const PROJECT_CACHE_DIR = '.linear-create';
+const PROJECT_CACHE_DIR = '.agent2linear';
 const PROJECT_CACHE_FILE = join(PROJECT_CACHE_DIR, 'project-cache.json');
 
 interface CacheEntry {

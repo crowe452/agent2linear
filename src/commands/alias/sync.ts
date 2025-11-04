@@ -36,42 +36,42 @@ export function aliasSyncCommand(program: Command) {
     .addHelpText('after', `
 Examples:
   # Initiatives
-  $ linear-create alias sync initiative           # Preview initiative aliases
-  $ linear-create alias sync initiatives --global  # Create global aliases
+  $ agent2linear alias sync initiative           # Preview initiative aliases
+  $ agent2linear alias sync initiatives --global  # Create global aliases
 
   # Teams
-  $ linear-create alias sync team --global         # Create global team aliases
-  $ linear-create alias sync teams --project       # Create project-local aliases
+  $ agent2linear alias sync team --global         # Create global team aliases
+  $ agent2linear alias sync teams --project       # Create project-local aliases
 
   # Members/Users
-  $ linear-create alias sync member --global            # All org members
-  $ linear-create alias sync user --team team_xyz       # Specific team members
-  $ linear-create alias sync members --org-wide --global
+  $ agent2linear alias sync member --global            # All org members
+  $ agent2linear alias sync user --team team_xyz       # Specific team members
+  $ agent2linear alias sync members --org-wide --global
 
   # Workflow States
-  $ linear-create alias sync workflow-state --global    # Default team states
-  $ linear-create alias sync workflow-states --team team_abc
+  $ agent2linear alias sync workflow-state --global    # Default team states
+  $ agent2linear alias sync workflow-states --team team_abc
 
   # Issue Labels
-  $ linear-create alias sync issue-label --global       # All issue labels
-  $ linear-create alias sync issue-labels --team team_xyz
+  $ agent2linear alias sync issue-label --global       # All issue labels
+  $ agent2linear alias sync issue-labels --team team_xyz
 
   # Project Labels
-  $ linear-create alias sync project-label --global     # All project labels
+  $ agent2linear alias sync project-label --global     # All project labels
 
   # Project Statuses
-  $ linear-create alias sync project-status --global    # All project statuses
+  $ agent2linear alias sync project-status --global    # All project statuses
 
 Common options:
   --dry-run: Preview without creating
   --force:   Override existing aliases
-  --global:  Save to ~/.config/linear-create/aliases.json (default)
-  --project: Save to .linear-create/aliases.json
+  --global:  Save to ~/.config/agent2linear/aliases.json (default)
+  --project: Save to .agent2linear/aliases.json
 
 This is equivalent to running entity-specific sync-aliases commands:
-  linear-create alias sync team           = linear-create teams sync-aliases
-  linear-create alias sync initiative     = linear-create initiatives sync-aliases
-  linear-create alias sync member         = linear-create members sync-aliases
+  agent2linear alias sync team           = agent2linear teams sync-aliases
+  agent2linear alias sync initiative     = agent2linear initiatives sync-aliases
+  agent2linear alias sync member         = agent2linear members sync-aliases
 `)
     .action(async (type: string, options) => {
       const normalizedType = normalizeEntityType(type);

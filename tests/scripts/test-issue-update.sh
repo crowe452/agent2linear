@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Comprehensive Test Suite for: linear-create issue update (M15.4)
+# Comprehensive Test Suite for: agent2linear issue update (M15.4)
 #
 # This script tests all permutations and combinations of the issue update command
 # including basic fields, priority, workflow, dates, assignments, labels/subscribers
@@ -8,7 +8,7 @@
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one team in your Linear workspace
 #
 # Usage:
@@ -41,7 +41,21 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Script identification
+SCRIPT_NAME=$(basename "$0")
+TIMESTAMP=$(date +%s)
+
+# Print runtime header
+echo ""
+echo -e "${YELLOW}==========================================${NC}"
+echo -e "${YELLOW}TEST SUITE: ${BOLD}${SCRIPT_NAME}${NC}"
+echo -e "${YELLOW}Description: Issue Update Tests${NC}"
+echo -e "${YELLOW}Timestamp: ${TIMESTAMP}${NC}"
+echo -e "${YELLOW}==========================================${NC}"
+echo ""
 
 # Configuration
 TEST_PREFIX="TEST_UPDATE_$(date +%Y%m%d_%H%M%S)"

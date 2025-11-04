@@ -425,61 +425,60 @@ Filter Precedence:
   • --all-assignees removes assignee filter entirely
 
 Active Filter Definition:
-  "Active" issues include workflow states with type:
-    • triage (e.g., "Triage", "Needs Review")
-    • backlog (e.g., "Backlog", "Icebox")
-    • unstarted (e.g., "Todo", "Planned")
-    • started (e.g., "In Progress", "In Review")
+  "Active" issues are those without completion or cancellation timestamps.
+  This typically includes workflow states such as:
+    • Triage (e.g., "Triage", "Needs Review")
+    • Backlog (e.g., "Backlog", "Icebox")
+    • Unstarted (e.g., "Todo", "Planned")
+    • Started (e.g., "In Progress", "In Review")
 
-  "Active" explicitly excludes:
-    • completed (e.g., "Done", "Shipped")
-    • canceled (e.g., "Canceled", "Duplicate")
+  Excluded: Issues marked as completed or canceled
 
 Examples:
-  $ linear-create issue list
+  $ agent2linear issue list
   # Shows: Your active issues in default team, sorted by priority
 
-  $ linear-create issue list --all-assignees
+  $ agent2linear issue list --all-assignees
   # Shows: All users' active issues in default team
 
-  $ linear-create issue list --team backend --completed
+  $ agent2linear issue list --team backend --completed
   # Shows: Completed issues in backend team
 
-  $ linear-create issue list --assignee john@company.com --priority 1
+  $ agent2linear issue list --assignee john@company.com --priority 1
   # Shows: Urgent issues assigned to john@company.com
 
-  $ linear-create issue list --project "Q1 Goals" --all-states
+  $ agent2linear issue list --project "Q1 Goals" --all-states
   # Shows: All issues in "Q1 Goals" project (any state)
 
-  $ linear-create issue list --label bug --label urgent
+  $ agent2linear issue list --label bug --label urgent
   # Shows: Issues with both "bug" AND "urgent" labels
 
-  $ linear-create issue list --parent ENG-123
+  $ agent2linear issue list --parent ENG-123
   # Shows: Sub-issues of ENG-123
 
-  $ linear-create issue list --root-only --state todo
+  $ agent2linear issue list --root-only --state todo
   # Shows: Root-level Todo issues (no parent)
 
-  $ linear-create issue list --search "authentication"
+  $ agent2linear issue list --search "authentication"
   # Shows: Issues containing "authentication" in title or description
 
-  $ linear-create issue list --cycle current
+  $ agent2linear issue list --cycle current
   # Shows: Issues in the "current" cycle
 
-  $ linear-create issue list --sort due --order asc
+  $ agent2linear issue list --sort due --order asc
   # Shows: Issues sorted by due date, earliest first
 
-  $ linear-create issue list --format json | jq '.[] | {id, title, priority}'
+  $ agent2linear issue list --format json | jq '.[] | {id, title, priority}'
   # JSON output for scripting and parsing
 
-  $ linear-create issue list --format tsv | cut -f1,2
+  $ agent2linear issue list --format tsv | cut -f1,2
   # TSV output for shell scripting
 
-  $ linear-create issue list --team backend --priority 1 --web
+  $ agent2linear issue list --team backend --priority 1 --web
   # Opens Linear in browser with filters applied
 
 Set defaults with:
-  $ linear-create config set defaultTeam <team-id>
+  $ agent2linear config set defaultTeam <team-id>
 `)
     .action(listIssues);
 }

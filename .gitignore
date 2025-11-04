@@ -31,3 +31,6 @@ Thumbs.db
 
 # Coverage
 coverage/
+
+# Generated cleanup scripts
+cleanup-*.sh

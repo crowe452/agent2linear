@@ -21,7 +21,7 @@ export async function viewProjectStatus(nameOrId: string, options: { web?: boole
 
       if (!statusId) {
         showEntityNotFound('project status', nameOrId);
-        console.error(`   Use 'linear-create project-status list' to see available statuses\n`);
+        console.error(`   Use 'agent2linear project-status list' to see available statuses\n`);
         process.exit(1);
       }
 
@@ -36,7 +36,7 @@ export async function viewProjectStatus(nameOrId: string, options: { web?: boole
 
     if (!status) {
       showEntityNotFound('project status', statusId);
-      console.error(`   Use 'linear-create project-status list' to see available statuses\n`);
+      console.error(`   Use 'agent2linear project-status list' to see available statuses\n`);
       process.exit(1);
     }
 
@@ -61,8 +61,8 @@ export async function viewProjectStatus(nameOrId: string, options: { web?: boole
 
     // Add helpful tip about using status in commands
     console.log(`\n💡 Use this status in commands:`);
-    console.log(`   $ linear-create project update <project> --status "${status.name}"`);
-    console.log(`   $ linear-create project update <project> --status ${status.id}\n`);
+    console.log(`   $ agent2linear project update <project> --status "${status.name}"`);
+    console.log(`   $ agent2linear project update <project> --status ${status.id}\n`);
   } catch (error) {
     console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
     process.exit(1);

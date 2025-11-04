@@ -111,9 +111,9 @@ export async function createTemplate(
     showSuccess('Milestone template created successfully!', details);
 
     console.log(`\n💡 Usage:`);
-    console.log(`   $ linear-create project create --milestone-template ${name}`);
-    console.log(`   $ linear-create project add-milestones <project-id> --template ${name}`);
-    console.log(`   $ linear-create config set defaultMilestoneTemplate ${name}\n`);
+    console.log(`   $ agent2linear project create --milestone-template ${name}`);
+    console.log(`   $ agent2linear project add-milestones <project-id> --template ${name}`);
+    console.log(`   $ agent2linear config set defaultMilestoneTemplate ${name}\n`);
   } catch (error) {
     showError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     process.exit(1);

@@ -16,7 +16,8 @@ export function viewIssueLabel(program: Command) {
 
         const label = await getIssueLabelById(resolvedId);
         if (!label) {
-          console.error(`❌ Issue label not found: ${id}`);
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('issue label', id, 'issue-labels list'));
           process.exit(1);
         }
 

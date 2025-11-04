@@ -69,7 +69,7 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
       if (!project) {
         showError(
           `Project not found: ${value}`,
-          'Use "linear-create project list" to see available projects'
+          'Use "agent2linear project list" to see available projects'
         );
         process.exit(1);
       }
@@ -80,7 +80,7 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
       if (!template) {
         showError(
           `Template not found: ${value}`,
-          'Use "linear-create templates list" to see available templates'
+          'Use "agent2linear templates list" to see available templates'
         );
         process.exit(1);
       }
@@ -99,7 +99,7 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
       if (!result) {
         showError(
           `Milestone template not found: ${value}`,
-          'Use "linear-create milestone-templates list" to see available templates'
+          'Use "agent2linear milestone-templates list" to see available templates'
         );
         process.exit(1);
       }
@@ -129,7 +129,7 @@ export async function setConfig(key: string, value: string, options: SetConfigOp
     showSuccess(`${keyLabel} saved to ${scopeLabel} config`);
 
     if (key === 'apiKey') {
-      console.log(`   Use 'linear-create config list' to view your configuration`);
+      console.log(`   Use 'agent2linear config list' to view your configuration`);
     }
   } catch (error) {
     showError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

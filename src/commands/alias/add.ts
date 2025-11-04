@@ -58,7 +58,7 @@ export async function addAliasCommand(
 
         if (matches.length === 0) {
           showError(`No members found matching email: ${options.email}`);
-          showInfo('Use "linear-create members list" to see all members');
+          showInfo('Use "agent2linear members list" to see all members');
           process.exit(1);
         } else if (matches.length === 1) {
           console.log(`   ✓ Found 1 match: ${matches[0].name} (${matches[0].email})`);
@@ -71,7 +71,7 @@ export async function addAliasCommand(
             matches.forEach(m => {
               console.log(`  - ${m.name} (${m.email}) - ${m.id}`);
             });
-            showInfo(`Tip: Use --interactive flag to select from list:\n   $ linear-create alias add member ${alias} --email ${options.email} --interactive`);
+            showInfo(`Tip: Use --interactive flag to select from list:\n   $ agent2linear alias add member ${alias} --email ${options.email} --interactive`);
             process.exit(1);
           } else {
             // Interactive selection
@@ -87,7 +87,7 @@ export async function addAliasCommand(
 
       if (matches.length === 0) {
         showError(`No members found matching name: ${options.name}`);
-        showInfo('Use "linear-create members list" to see all members');
+        showInfo('Use "agent2linear members list" to see all members');
         process.exit(1);
       } else if (matches.length === 1) {
         console.log(`   ✓ Found 1 match: ${matches[0].name} (${matches[0].email})`);
@@ -100,7 +100,7 @@ export async function addAliasCommand(
           matches.forEach(m => {
             console.log(`  - ${m.name} (${m.email}) - ${m.id}`);
           });
-          showInfo(`Tip: Use --interactive flag to select from list:\n   $ linear-create alias add member ${alias} --name "${options.name}" --interactive`);
+          showInfo(`Tip: Use --interactive flag to select from list:\n   $ agent2linear alias add member ${alias} --name "${options.name}" --interactive`);
           process.exit(1);
         } else {
           // Interactive selection
@@ -116,9 +116,9 @@ export async function addAliasCommand(
   // Validate ID is provided
   if (!id) {
     showError('Missing identifier. Provide one of:\n' +
-      '   - ID: linear-create alias add <type> <alias> <id>\n' +
-      '   - Email (member only): linear-create alias add member <alias> --email <email>\n' +
-      '   - Name (member only): linear-create alias add member <alias> --name "<name>"');
+      '   - ID: agent2linear alias add <type> <alias> <id>\n' +
+      '   - Email (member only): agent2linear alias add member <alias> --email <email>\n' +
+      '   - Name (member only): agent2linear alias add member <alias> --name "<name>"');
     process.exit(1);
   }
 

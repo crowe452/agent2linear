@@ -32,7 +32,7 @@ function App({ options: _options }: { options: ListOptions }) {
   const handleSelect = (_initiative: Initiative) => {
     // Interactive list mode doesn't save, just allows browsing
     // Use 'initiatives select' for saving
-    console.log('\n💡 Tip: Use "linear-create init select" to save a default initiative\n');
+    console.log('\n💡 Tip: Use "agent2linear init select" to save a default initiative\n');
     process.exit(0);
   };
 

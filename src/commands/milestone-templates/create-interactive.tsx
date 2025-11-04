@@ -56,9 +56,9 @@ const TemplateCreator: React.FC<TemplateCreatorProps> = ({ options, onExit }) =>
     console.log(`   Milestones: ${milestones.length}`);
     console.log(`   Scope: ${scopeLabel}\n`);
     console.log('💡 Usage:');
-    console.log(`   $ linear-create project create --milestone-template ${templateName}`);
-    console.log(`   $ linear-create project add-milestones <project-id> --template ${templateName}`);
-    console.log(`   $ linear-create config set defaultMilestoneTemplate ${templateName}\n`);
+    console.log(`   $ agent2linear project create --milestone-template ${templateName}`);
+    console.log(`   $ agent2linear project add-milestones <project-id> --template ${templateName}`);
+    console.log(`   $ agent2linear config set defaultMilestoneTemplate ${templateName}\n`);
 
     onExit(0);
   };

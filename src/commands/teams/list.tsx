@@ -87,7 +87,7 @@ function App({ options: _options }: { options: ListOptions }) {
         })}
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>💡 Tip: Use "linear-create teams select" to save a default team</Text>
+        <Text dimColor>💡 Tip: Use "agent2linear teams select" to save a default team</Text>
       </Box>
     </Box>
   );
@@ -144,7 +144,7 @@ export async function listTeams(options: ListOptions = {}) {
             : '(none)';
           console.log(`${team.id}\t${team.name}\t\t${team.key || ''}\t${aliasDisplay}`);
         });
-        console.log('\n💡 Tip: Use "linear-create teams select" to save a default team');
+        console.log('\n💡 Tip: Use "agent2linear teams select" to save a default team');
       }
     } catch (error) {
       console.error(`❌ Error: ${error instanceof Error ? error.message : 'Failed to fetch teams'}`);

@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { getIssueLabelById, updateIssueLabel } from '../../lib/linear-client.js';
 import { resolveAlias } from '../../lib/aliases.js';
-import { isValidHexColor, normalizeHexColor } from '../../lib/colors.js';
 
 export function updateIssueLabelCommand(program: Command) {
   program
@@ -20,18 +19,26 @@ export function updateIssueLabelCommand(program: Command) {
         const resolvedId = resolveAlias('issue-label', id);
         const currentLabel = await getIssueLabelById(resolvedId);
         if (!currentLabel) {
-          console.error(`❌ Issue label not found: ${id}`);
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('issue label', id, 'issue-labels list'));
           process.exit(1);
         }
 
-        if (options.color && !isValidHexColor(options.color)) {
-          console.error(`❌ Error: Invalid color format: ${options.color}`);
-          process.exit(1);
+        const { validateAndNormalizeColor } = await import('../../lib/validators.js');
+        if (options.color) {
+          const colorResult = validateAndNormalizeColor(options.color);
+          if (!colorResult.valid) {
+            console.error(`❌ Error: ${colorResult.error}`);
+            process.exit(1);
+          }
         }
 
         const updateInput: { name?: string; color?: string; description?: string } = {};
         if (options.name) updateInput.name = options.name;
-        if (options.color) updateInput.color = normalizeHexColor(options.color);
+        if (options.color) {
+          const colorResult = validateAndNormalizeColor(options.color);
+          updateInput.color = colorResult.value!;
+        }
         if (options.description !== undefined) updateInput.description = options.description;
 
         console.log('📝 Updating issue label...');

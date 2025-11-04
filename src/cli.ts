@@ -75,8 +75,8 @@ import { registerIssueListCommand } from './commands/issue/list.js';
 const cli = new Command();
 
 cli
-  .name('linear-create')
-  .description('Command-line tool for creating Linear issues and projects')
+  .name('agent2linear')
+  .description('Command-line tool for creating Linear issues and projects. Designed for AI agents and automation.')
   .version('0.24.0')
   .action(() => {
     cli.help();
@@ -100,13 +100,13 @@ initiatives
   .option('-f, --format <type>', 'Output format: tsv, json')
   .addHelpText('after', `
 Examples:
-  $ linear-create initiatives list              # Print list to stdout (default TSV)
-  $ linear-create init ls                        # Same as 'list' (alias)
-  $ linear-create initiatives list --interactive # Browse interactively
-  $ linear-create initiatives list --web         # Open in browser
-  $ linear-create initiatives list --format json # Output as JSON
-  $ linear-create initiatives list --format tsv  # Output as TSV (explicit)
-  $ linear-create init list -f json | jq '.[0]'  # Pipe to jq
+  $ agent2linear initiatives list              # Print list to stdout (default TSV)
+  $ agent2linear init ls                        # Same as 'list' (alias)
+  $ agent2linear initiatives list --interactive # Browse interactively
+  $ agent2linear initiatives list --web         # Open in browser
+  $ agent2linear initiatives list --format json # Output as JSON
+  $ agent2linear initiatives list --format tsv  # Output as TSV (explicit)
+  $ agent2linear init list -f json | jq '.[0]'  # Pipe to jq
 `)
   .action(async (options) => {
     await listInitiatives(options);
@@ -119,13 +119,13 @@ initiatives
   .option('-w, --web', 'Open initiative in browser instead of displaying in terminal')
   .addHelpText('after', `
 Examples:
-  $ linear-create initiatives view init_abc123
-  $ linear-create init view init_abc123
-  $ linear-create initiatives view init_abc123 --web
-  $ linear-create init view myalias --web
-  $ linear-create init view --interactive        # Select from list
-  $ linear-create init view -I                   # Select and view in terminal
-  $ linear-create init view -I --web             # Select and open in browser
+  $ agent2linear initiatives view init_abc123
+  $ agent2linear init view init_abc123
+  $ agent2linear initiatives view init_abc123 --web
+  $ agent2linear init view myalias --web
+  $ agent2linear init view --interactive        # Select from list
+  $ agent2linear init view -I                   # Select and view in terminal
+  $ agent2linear init view -I --web             # Select and open in browser
 `)
   .action(async (id: string | undefined, options) => {
     await viewInitiative(id, options);
@@ -138,8 +138,8 @@ initiatives
   .option('-p, --project', 'Save to project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create initiatives select                # Interactive selection
-  $ linear-create initiatives select --project      # Save to project config
+  $ agent2linear initiatives select                # Interactive selection
+  $ agent2linear initiatives select --project      # Save to project config
 `)
   .action(async (options) => {
     await selectInitiative(options);
@@ -152,9 +152,9 @@ initiatives
   .option('-p, --project', 'Save to project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create initiatives set init_abc123
-  $ linear-create initiatives set backend        # Using alias
-  $ linear-create initiatives set init_xyz789 --project
+  $ agent2linear initiatives set init_abc123
+  $ agent2linear initiatives set backend        # Using alias
+  $ agent2linear initiatives set init_xyz789 --project
 `)
   .action(async (id: string, options) => {
     await setInitiative(id, options);
@@ -214,68 +214,68 @@ project
   .addHelpText('after', `
 Examples:
   Basic (auto-assigns you as lead):
-  $ linear-create project create --title "My Project" --team team_xyz789
-  $ linear-create proj new --title "Quick Project" --team team_xyz789  # Same as 'create' (alias)
-  $ linear-create project create --title "Q1 Goals" --initiative init_abc123 --team team_xyz789
+  $ agent2linear project create --title "My Project" --team team_xyz789
+  $ agent2linear proj new --title "Quick Project" --team team_xyz789  # Same as 'create' (alias)
+  $ agent2linear project create --title "Q1 Goals" --initiative init_abc123 --team team_xyz789
 
   With template:
-  $ linear-create project create --title "API Project" --template template_abc123 --team team_xyz789
+  $ agent2linear project create --title "API Project" --template template_abc123 --team team_xyz789
 
   Lead assignment (by default, you are auto-assigned as lead):
-  $ linear-create project create --title "My Project" --team team_xyz789
+  $ agent2linear project create --title "My Project" --team team_xyz789
       # Auto-assigns current user as lead
 
-  $ linear-create project create --title "My Project" --team team_xyz789 --lead user_abc123
+  $ agent2linear project create --title "My Project" --team team_xyz789 --lead user_abc123
       # Assign specific user as lead
 
-  $ linear-create project create --title "My Project" --team team_xyz789 --no-lead
+  $ agent2linear project create --title "My Project" --team team_xyz789 --no-lead
       # No lead assignment
 
-  $ linear-create config set defaultAutoAssignLead false
+  $ agent2linear config set defaultAutoAssignLead false
       # Disable auto-assign globally
 
   With additional fields:
-  $ linear-create project create --title "Website Redesign" --team team_abc123 \\
+  $ agent2linear project create --title "Website Redesign" --team team_abc123 \\
       --icon "Tree" --color "#FF6B6B" --lead user_xyz789 \\
       --start-date "2025-01-15" \\
       --target-date "2025-03-31" \\
       --priority 2
 
   Date formats (flexible, auto-detected resolution):
-  $ linear-create project create --title "Q1 Initiative" --team team_abc123 --start-date "2025-Q1"
+  $ agent2linear project create --title "Q1 Initiative" --team team_abc123 --start-date "2025-Q1"
       # Creates project with start date: 2025-01-01, resolution: quarter
 
-  $ linear-create project create --title "January Sprint" --team team_abc123 --start-date "Jan 2025"
+  $ agent2linear project create --title "January Sprint" --team team_abc123 --start-date "Jan 2025"
       # Creates project with start date: 2025-01-01, resolution: month
 
-  $ linear-create project create --title "2025 Strategy" --team team_abc123 \\
+  $ agent2linear project create --title "2025 Strategy" --team team_abc123 \\
       --start-date "2025" --target-date "2025-Q4"
       # Start: 2025-01-01 (year), Target: 2025-10-01 (quarter)
 
   With content and labels:
-  $ linear-create project create --title "Q1 Planning" --team team_abc123 \\
+  $ agent2linear project create --title "Q1 Planning" --team team_abc123 \\
       --content "# Goals\\n- Improve performance\\n- Add features" \\
       --labels "label_1,label_2"
 
   With content from file:
-  $ linear-create project create --title "API Project" --team team_abc123 \\
+  $ agent2linear project create --title "API Project" --team team_abc123 \\
       --content-file ./project-plan.md
 
   With dependencies (simple mode):
-  $ linear-create project create --title "Frontend App" --team team_abc123 \\
+  $ agent2linear project create --title "Frontend App" --team team_abc123 \\
       --depends-on "api-backend,infrastructure" \\
       --blocks "testing,deployment"
 
   With dependencies (advanced mode - custom anchors):
-  $ linear-create project create --title "API v2" --team team_abc123 \\
+  $ agent2linear project create --title "API v2" --team team_abc123 \\
       --dependency "backend-infra:end:start" \\
       --dependency "database-migration:start:end"
 
   Interactive mode:
-  $ linear-create project create --interactive
+  $ agent2linear project create --interactive
 
   Open in browser:
-  $ linear-create project create --web
+  $ agent2linear project create --web
 
 Field Value Formats:
   --status          status_xxx (Linear status ID)
@@ -308,10 +308,10 @@ Date Formats (--start-date, --target-date):
         and only needed for advanced use cases where you want to override the auto-detection.
 
 Note: Set defaults with config:
-  $ linear-create config set defaultProjectTemplate template_abc123
-  $ linear-create config set defaultAutoAssignLead true  # Enable auto-assign (default)
-  $ linear-create config set defaultAutoAssignLead false  # Disable auto-assign
-  $ linear-create teams select  # Set default team
+  $ agent2linear config set defaultProjectTemplate template_abc123
+  $ agent2linear config set defaultAutoAssignLead true  # Enable auto-assign (default)
+  $ agent2linear config set defaultAutoAssignLead false  # Disable auto-assign
+  $ agent2linear teams select  # Set default team
 `)
   .action(async options => {
     await createProjectCommand(options);
@@ -324,11 +324,11 @@ project
   .option('-a, --auto-alias', 'Automatically create an alias if resolving by name')
   .addHelpText('after', `
 Examples:
-  $ linear-create project view PRJ-123                    # By ID
-  $ linear-create proj view "My Project Name"             # By exact name
-  $ linear-create project view proj_abc123 --web          # By ID, open in browser
-  $ linear-create proj view myalias --web                 # By alias
-  $ linear-create proj view "Project X" --auto-alias      # Create alias automatically
+  $ agent2linear project view PRJ-123                    # By ID
+  $ agent2linear proj view "My Project Name"             # By exact name
+  $ agent2linear project view proj_abc123 --web          # By ID, open in browser
+  $ agent2linear proj view myalias --web                 # By alias
+  $ agent2linear proj view "Project X" --auto-alias      # Create alias automatically
 `)
   .action(async (nameOrId: string, options) => {
     await viewProject(nameOrId, options);
@@ -363,31 +363,31 @@ project
   .option('-w, --web', 'Open project in browser after update')
   .addHelpText('after', `
 Examples:
-  $ linear-create project update "My Project" --status "In Progress"
-  $ linear-create proj update proj_abc --status done --priority 3
-  $ linear-create proj update myalias --name "New Name"
+  $ agent2linear project update "My Project" --status "In Progress"
+  $ agent2linear proj update proj_abc --status done --priority 3
+  $ agent2linear proj update myalias --name "New Name"
 
   Update content from file:
-  $ linear-create proj update "My Project" --content-file ./updated-plan.md
+  $ agent2linear proj update "My Project" --content-file ./updated-plan.md
 
   Update with flexible date formats:
-  $ linear-create proj update "Q1 Goals" --status in-progress --priority 2 --target-date "2025-Q1"
-  $ linear-create proj update "My Project" --start-date "Jan 2025" --target-date "2025-H1"
-  $ linear-create proj update "Annual Plan" --start-date "2025" --target-date "2025-12-31"
+  $ agent2linear proj update "Q1 Goals" --status in-progress --priority 2 --target-date "2025-Q1"
+  $ agent2linear proj update "My Project" --start-date "Jan 2025" --target-date "2025-H1"
+  $ agent2linear proj update "Annual Plan" --start-date "2025" --target-date "2025-12-31"
 
   Manage external links:
-  $ linear-create proj update "My Project" --link "https://github.com/org/repo|GitHub"
-  $ linear-create proj update "My Project" --remove-link "https://old-link.com"
-  $ linear-create proj update "My Project" --link "https://new.com|New" --remove-link "https://old.com"
+  $ agent2linear proj update "My Project" --link "https://github.com/org/repo|GitHub"
+  $ agent2linear proj update "My Project" --remove-link "https://old-link.com"
+  $ agent2linear proj update "My Project" --link "https://new.com|New" --remove-link "https://old.com"
 
   Manage dependencies:
-  $ linear-create proj update "My Project" --depends-on "api-backend,infrastructure"
-  $ linear-create proj update "My Project" --blocks "frontend-app"
-  $ linear-create proj update "My Project" --remove-depends-on "old-dep"
-  $ linear-create proj update "My Project" --dependency "backend:end:start" --remove-depends-on "old-project"
+  $ agent2linear proj update "My Project" --depends-on "api-backend,infrastructure"
+  $ agent2linear proj update "My Project" --blocks "frontend-app"
+  $ agent2linear proj update "My Project" --remove-depends-on "old-dep"
+  $ agent2linear proj update "My Project" --dependency "backend:end:start" --remove-depends-on "old-project"
 
   Open in browser after update:
-  $ linear-create proj update "My Project" --priority 1 --web
+  $ agent2linear proj update "My Project" --priority 1 --web
 `)
   .action(async (nameOrId: string, options) => {
     await updateProjectCommand(nameOrId, options);
@@ -399,13 +399,13 @@ project
   .option('-t, --template <name>', 'Milestone template name')
   .addHelpText('after', `
 Examples:
-  $ linear-create project add-milestones PRJ-123 --template basic-sprint
-  $ linear-create proj add-milestones "My Project" --template product-launch
-  $ linear-create project add-milestones proj_abc123 -t basic-sprint
-  $ linear-create project add-milestones myalias  # Uses default template from config
+  $ agent2linear project add-milestones PRJ-123 --template basic-sprint
+  $ agent2linear proj add-milestones "My Project" --template product-launch
+  $ agent2linear project add-milestones proj_abc123 -t basic-sprint
+  $ agent2linear project add-milestones myalias  # Uses default template from config
 
 Note: Set default template with:
-  $ linear-create config set defaultMilestoneTemplate basic-sprint
+  $ agent2linear config set defaultMilestoneTemplate basic-sprint
 `)
   .action(async (projectId: string, options) => {
     await addMilestones(projectId, options);
@@ -429,14 +429,14 @@ projectDeps
   .addHelpText('after', `
 Examples:
   Simple mode (default anchors):
-  $ linear-create project dependencies add "My Project" --depends-on "backend,database"
-  $ linear-create proj deps add PRJ-123 --blocks "frontend,mobile"
+  $ agent2linear project dependencies add "My Project" --depends-on "backend,database"
+  $ agent2linear proj deps add PRJ-123 --blocks "frontend,mobile"
 
   Advanced mode (custom anchors):
-  $ linear-create project deps add "API v2" --dependency "backend:end:start" --dependency "db:start:end"
+  $ agent2linear project deps add "API v2" --dependency "backend:end:start" --dependency "db:start:end"
 
   Mixed mode:
-  $ linear-create proj deps add myproject --depends-on "backend" --dependency "db:start:start"
+  $ agent2linear proj deps add myproject --depends-on "backend" --dependency "db:start:start"
 
 Note:
   - --depends-on: Creates end→start relation (my end waits for their start)
@@ -460,17 +460,17 @@ projectDeps
   .addHelpText('after', `
 Examples:
   Remove by direction:
-  $ linear-create project dependencies remove "My Project" --depends-on "backend"
-  $ linear-create proj deps remove PRJ-123 --blocks "frontend,mobile"
+  $ agent2linear project dependencies remove "My Project" --depends-on "backend"
+  $ agent2linear proj deps remove PRJ-123 --blocks "frontend,mobile"
 
   Remove by relation ID:
-  $ linear-create proj deps remove "API v2" --relation-id "rel_abc123"
+  $ agent2linear proj deps remove "API v2" --relation-id "rel_abc123"
 
   Remove all relations with a project:
-  $ linear-create project deps remove myproject --with "backend"
+  $ agent2linear project deps remove myproject --with "backend"
 
   Mixed removal:
-  $ linear-create proj deps remove PRJ-123 --depends-on "backend" --blocks "frontend"
+  $ agent2linear proj deps remove PRJ-123 --depends-on "backend" --blocks "frontend"
 
 Note:
   - Provide at least one flag (--depends-on, --blocks, --relation-id, or --with)
@@ -489,12 +489,12 @@ projectDeps
   .addHelpText('after', `
 Examples:
   List all dependencies:
-  $ linear-create project dependencies list "My Project"
-  $ linear-create proj deps ls PRJ-123
+  $ agent2linear project dependencies list "My Project"
+  $ agent2linear proj deps ls PRJ-123
 
   Filter by direction:
-  $ linear-create proj deps list "API v2" --direction depends-on
-  $ linear-create project deps ls myproject --direction blocks
+  $ agent2linear proj deps list "API v2" --direction depends-on
+  $ agent2linear project deps ls myproject --direction blocks
 
 Output:
   Shows both "depends-on" and "blocks" relations with:
@@ -516,16 +516,16 @@ projectDeps
   .addHelpText('after', `
 Examples:
   Clear all dependencies (with confirmation):
-  $ linear-create project dependencies clear "My Project"
-  $ linear-create proj deps clear PRJ-123
+  $ agent2linear project dependencies clear "My Project"
+  $ agent2linear proj deps clear PRJ-123
 
   Clear specific direction:
-  $ linear-create proj deps clear "API v2" --direction depends-on
-  $ linear-create project deps clear myproject --direction blocks
+  $ agent2linear proj deps clear "API v2" --direction depends-on
+  $ agent2linear project deps clear myproject --direction blocks
 
   Skip confirmation:
-  $ linear-create proj deps clear PRJ-123 --yes
-  $ linear-create project deps clear myproject --direction depends-on -y
+  $ agent2linear proj deps clear PRJ-123 --yes
+  $ agent2linear project deps clear myproject --direction depends-on -y
 
 Warning:
   This permanently deletes dependency relations. Use with caution.
@@ -584,13 +584,13 @@ teams
   .option('-f, --format <type>', 'Output format: tsv, json')
   .addHelpText('after', `
 Examples:
-  $ linear-create teams list              # Print list to stdout (formatted)
-  $ linear-create team ls                 # Same as 'list' (alias)
-  $ linear-create teams list --interactive # Browse interactively
-  $ linear-create teams list --web        # Open in browser
-  $ linear-create teams list --format json # Output as JSON
-  $ linear-create teams list --format tsv  # Output as TSV
-  $ linear-create team list -f tsv | cut -f1  # Get just team IDs
+  $ agent2linear teams list              # Print list to stdout (formatted)
+  $ agent2linear team ls                 # Same as 'list' (alias)
+  $ agent2linear teams list --interactive # Browse interactively
+  $ agent2linear teams list --web        # Open in browser
+  $ agent2linear teams list --format json # Output as JSON
+  $ agent2linear teams list --format tsv  # Output as TSV
+  $ agent2linear team list -f tsv | cut -f1  # Get just team IDs
 `)
   .action(async (options) => {
     await listTeams(options);
@@ -603,8 +603,8 @@ teams
   .option('-p, --project', 'Save to project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create teams select                # Interactive selection
-  $ linear-create teams select --project      # Save to project config
+  $ agent2linear teams select                # Interactive selection
+  $ agent2linear teams select --project      # Save to project config
 `)
   .action(async (options) => {
     await selectTeam(options);
@@ -617,9 +617,9 @@ teams
   .option('-p, --project', 'Save to project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create teams set team_abc123
-  $ linear-create teams set eng              # Using alias
-  $ linear-create teams set team_abc123 --project
+  $ agent2linear teams set team_abc123
+  $ agent2linear teams set eng              # Using alias
+  $ agent2linear teams set team_abc123 --project
 `)
   .action(async (id: string, options) => {
     await setTeam(id, options);
@@ -631,10 +631,10 @@ teams
   .option('-w, --web', 'Open team in browser instead of displaying in terminal')
   .addHelpText('after', `
 Examples:
-  $ linear-create teams view team_abc123
-  $ linear-create team view team_abc123
-  $ linear-create teams view team_abc123 --web
-  $ linear-create team view eng --web
+  $ agent2linear teams view team_abc123
+  $ agent2linear team view team_abc123
+  $ agent2linear teams view team_abc123 --web
+  $ agent2linear team view eng --web
 `)
   .action(async (id: string, options) => {
     await viewTeam(id, options);
@@ -667,22 +667,22 @@ members
   .option('--admin', 'Show only admin users')
   .addHelpText('after', `
 Examples:
-  $ linear-create members list                    # List default team members
-  $ linear-create users ls                        # Same as 'list' (alias)
-  $ linear-create members list --org-wide         # List all organization members
-  $ linear-create members list --team team_abc123 # List specific team members
-  $ linear-create members list --name John        # Filter by name
-  $ linear-create members list --email @acme.com  # Filter by email domain
-  $ linear-create members list --active           # Show only active members
-  $ linear-create members list --admin            # Show only admins
-  $ linear-create members list --interactive      # Browse interactively
-  $ linear-create members list --web              # Open in browser
-  $ linear-create members list --format json      # Output as JSON
-  $ linear-create members list --format tsv       # Output as TSV
-  $ linear-create members list -f tsv | cut -f1   # Get just member IDs
+  $ agent2linear members list                    # List default team members
+  $ agent2linear users ls                        # Same as 'list' (alias)
+  $ agent2linear members list --org-wide         # List all organization members
+  $ agent2linear members list --team team_abc123 # List specific team members
+  $ agent2linear members list --name John        # Filter by name
+  $ agent2linear members list --email @acme.com  # Filter by email domain
+  $ agent2linear members list --active           # Show only active members
+  $ agent2linear members list --admin            # Show only admins
+  $ agent2linear members list --interactive      # Browse interactively
+  $ agent2linear members list --web              # Open in browser
+  $ agent2linear members list --format json      # Output as JSON
+  $ agent2linear members list --format tsv       # Output as TSV
+  $ agent2linear members list -f tsv | cut -f1   # Get just member IDs
 
 Note: By default, uses your configured default team. Use --org-wide to see all members.
-  $ linear-create config set defaultTeam team_xxx  # Set default team
+  $ agent2linear config set defaultTeam team_xxx  # Set default team
 `)
   .action(async (options) => {
     await listMembers(options);
@@ -708,13 +708,13 @@ projectStatus
   .option('-f, --format <type>', 'Output format: tsv, json')
   .addHelpText('after', `
 Examples:
-  $ linear-create project-status list              # Print list to stdout (formatted)
-  $ linear-create pstatus ls                       # Same as 'list' (alias)
-  $ linear-create project-status list --interactive # Browse interactively
-  $ linear-create project-status list --web        # Open in browser
-  $ linear-create project-status list --format json # Output as JSON
-  $ linear-create project-status list --format tsv  # Output as TSV
-  $ linear-create pstatus list -f tsv | cut -f1    # Get just status IDs
+  $ agent2linear project-status list              # Print list to stdout (formatted)
+  $ agent2linear pstatus ls                       # Same as 'list' (alias)
+  $ agent2linear project-status list --interactive # Browse interactively
+  $ agent2linear project-status list --web        # Open in browser
+  $ agent2linear project-status list --format json # Output as JSON
+  $ agent2linear project-status list --format tsv  # Output as TSV
+  $ agent2linear pstatus list -f tsv | cut -f1    # Get just status IDs
 `)
   .action(async (options) => {
     await listProjectStatuses(options);
@@ -726,10 +726,10 @@ projectStatus
   .option('-w, --web', 'Open project settings in browser instead of displaying in terminal')
   .addHelpText('after', `
 Examples:
-  $ linear-create project-status view "In Progress"
-  $ linear-create pstatus view status_abc123
-  $ linear-create project-status view planned --web
-  $ linear-create pstatus view active-status --web  # Using alias
+  $ agent2linear project-status view "In Progress"
+  $ agent2linear pstatus view status_abc123
+  $ agent2linear project-status view planned --web
+  $ agent2linear pstatus view active-status --web  # Using alias
 `)
   .action(async (nameOrId: string, options) => {
     await viewProjectStatus(nameOrId, options);
@@ -744,10 +744,10 @@ projectStatus
   .option('--force', 'Override existing aliases')
   .addHelpText('after', `
 Examples:
-  $ linear-create project-status sync-aliases           # Create global aliases
-  $ linear-create pstatus sync-aliases --project        # Create project-local aliases
-  $ linear-create project-status sync-aliases --dry-run # Preview changes
-  $ linear-create pstatus sync-aliases --force          # Force override existing
+  $ agent2linear project-status sync-aliases           # Create global aliases
+  $ agent2linear pstatus sync-aliases --project        # Create project-local aliases
+  $ agent2linear project-status sync-aliases --dry-run # Preview changes
+  $ agent2linear pstatus sync-aliases --force          # Force override existing
 
 This command will create aliases for all project statuses in your workspace,
 using the status name converted to lowercase with hyphens (e.g., "In Progress" → "in-progress").
@@ -782,32 +782,32 @@ alias
   .addHelpText('after', `
 Examples:
   Basic (with ID):
-  $ linear-create alias add initiative backend init_abc123xyz
-  $ linear-create alias add team frontend team_def456uvw --project
-  $ linear-create alias add project api proj_ghi789rst
-  $ linear-create alias add project-status in-progress status_abc123
-  $ linear-create alias add issue-template bug-report template_abc123
-  $ linear-create alias add project-template sprint-template template_xyz789
-  $ linear-create alias add issue-label bug label_abc123def
-  $ linear-create alias add project-label release label_ghi456jkl
-  $ linear-create alias add workflow-state done state_mno789pqr
-  $ linear-create alias add member john user_abc123def
+  $ agent2linear alias add initiative backend init_abc123xyz
+  $ agent2linear alias add team frontend team_def456uvw --project
+  $ agent2linear alias add project api proj_ghi789rst
+  $ agent2linear alias add project-status in-progress status_abc123
+  $ agent2linear alias add issue-template bug-report template_abc123
+  $ agent2linear alias add project-template sprint-template template_xyz789
+  $ agent2linear alias add issue-label bug label_abc123def
+  $ agent2linear alias add project-label release label_ghi456jkl
+  $ agent2linear alias add workflow-state done state_mno789pqr
+  $ agent2linear alias add member john user_abc123def
 
   Member by exact email (auto-select):
-  $ linear-create alias add member john --email john.doe@acme.com
-  $ linear-create alias add user jane --email jane@acme.com
+  $ agent2linear alias add member john --email john.doe@acme.com
+  $ agent2linear alias add user jane --email jane@acme.com
 
   Member by partial email (error if multiple matches):
-  $ linear-create alias add member john --email @acme.com
+  $ agent2linear alias add member john --email @acme.com
   # Error: Multiple members found. Use --interactive to select.
 
   Member by email with interactive selection:
-  $ linear-create alias add member john --email @acme.com --interactive
-  $ linear-create alias add member john --email john@ --interactive
+  $ agent2linear alias add member john --email @acme.com --interactive
+  $ agent2linear alias add member john --email john@ --interactive
 
   Member by name with interactive selection:
-  $ linear-create alias add member john --name John --interactive
-  $ linear-create alias add member jane --name "Jane Smith" --interactive
+  $ agent2linear alias add member john --name John --interactive
+  $ agent2linear alias add member jane --name "Jane Smith" --interactive
 
 Note: --email, --name, and --interactive flags are only valid for member/user type
 `)
@@ -822,20 +822,20 @@ alias
   .option('--validate', 'Validate that aliases point to existing entities')
   .addHelpText('after', `
 Examples:
-  $ linear-create alias list                    # List all aliases
-  $ linear-create alias ls                      # Same as 'list' (alias)
-  $ linear-create alias list initiative         # List only initiative aliases
-  $ linear-create alias list team               # List only team aliases
-  $ linear-create alias list project            # List only project aliases
-  $ linear-create alias list project-status     # List only project status aliases
-  $ linear-create alias list issue-template     # List only issue template aliases
-  $ linear-create alias list project-template   # List only project template aliases
-  $ linear-create alias list issue-label        # List only issue label aliases
-  $ linear-create alias list project-label      # List only project label aliases
-  $ linear-create alias list workflow-state     # List only workflow state aliases
-  $ linear-create alias list member             # List only member aliases
-  $ linear-create alias list user               # List only user/member aliases
-  $ linear-create alias list --validate         # Validate all aliases
+  $ agent2linear alias list                    # List all aliases
+  $ agent2linear alias ls                      # Same as 'list' (alias)
+  $ agent2linear alias list initiative         # List only initiative aliases
+  $ agent2linear alias list team               # List only team aliases
+  $ agent2linear alias list project            # List only project aliases
+  $ agent2linear alias list project-status     # List only project status aliases
+  $ agent2linear alias list issue-template     # List only issue template aliases
+  $ agent2linear alias list project-template   # List only project template aliases
+  $ agent2linear alias list issue-label        # List only issue label aliases
+  $ agent2linear alias list project-label      # List only project label aliases
+  $ agent2linear alias list workflow-state     # List only workflow state aliases
+  $ agent2linear alias list member             # List only member aliases
+  $ agent2linear alias list user               # List only user/member aliases
+  $ agent2linear alias list --validate         # Validate all aliases
 `)
   .action(async (type?: string, options?: { validate?: boolean }) => {
     await listAliasCommand(type, options);
@@ -854,16 +854,16 @@ alias
   .option('-p, --project', 'Remove from project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create alias remove initiative backend
-  $ linear-create alias rm team frontend --project
-  $ linear-create alias remove project-status in-progress
-  $ linear-create alias remove issue-template bug-report
-  $ linear-create alias rm project-template sprint-template
-  $ linear-create alias remove issue-label bug
-  $ linear-create alias remove project-label release
-  $ linear-create alias remove workflow-state done
-  $ linear-create alias remove member john
-  $ linear-create alias rm user jane
+  $ agent2linear alias remove initiative backend
+  $ agent2linear alias rm team frontend --project
+  $ agent2linear alias remove project-status in-progress
+  $ agent2linear alias remove issue-template bug-report
+  $ agent2linear alias rm project-template sprint-template
+  $ agent2linear alias remove issue-label bug
+  $ agent2linear alias remove project-label release
+  $ agent2linear alias remove workflow-state done
+  $ agent2linear alias remove member john
+  $ agent2linear alias rm user jane
 `)
   .action((type: string, alias: string, options) => {
     removeAliasCommand(type, alias, options);
@@ -879,16 +879,16 @@ alias
   .description('Get the ID for an alias')
   .addHelpText('after', `
 Examples:
-  $ linear-create alias get initiative backend
-  $ linear-create alias get team frontend
-  $ linear-create alias get project-status in-progress
-  $ linear-create alias get issue-template bug-report
-  $ linear-create alias get project-template sprint-template
-  $ linear-create alias get issue-label bug
-  $ linear-create alias get project-label release
-  $ linear-create alias get workflow-state done
-  $ linear-create alias get member john
-  $ linear-create alias get user jane
+  $ agent2linear alias get initiative backend
+  $ agent2linear alias get team frontend
+  $ agent2linear alias get project-status in-progress
+  $ agent2linear alias get issue-template bug-report
+  $ agent2linear alias get project-template sprint-template
+  $ agent2linear alias get issue-label bug
+  $ agent2linear alias get project-label release
+  $ agent2linear alias get workflow-state done
+  $ agent2linear alias get member john
+  $ agent2linear alias get user jane
 `)
   .action((type: string, alias: string) => {
     getAliasCommand(type, alias);
@@ -915,9 +915,9 @@ Available operations:
   - Delete alias: Remove an alias entirely
 
 Examples:
-  $ linear-create alias edit           # Interactive mode (choose scope interactively)
-  $ linear-create alias edit --global  # Edit global aliases directly
-  $ linear-create alias edit --project # Edit project aliases directly
+  $ agent2linear alias edit           # Interactive mode (choose scope interactively)
+  $ agent2linear alias edit --global  # Edit global aliases directly
+  $ agent2linear alias edit --project # Edit project aliases directly
 
 Note: This command is fully interactive. For non-interactive editing,
       use 'alias add' and 'alias remove' commands instead.
@@ -940,16 +940,16 @@ alias
   .addHelpText('after', `
 Examples:
   # Preview what would be cleared
-  $ linear-create alias clear team --dry-run
-  $ linear-create alias clear member --project --dry-run
+  $ agent2linear alias clear team --dry-run
+  $ agent2linear alias clear member --project --dry-run
 
   # Clear with confirmation
-  $ linear-create alias clear team --global
-  $ linear-create alias clear project-status --project
+  $ agent2linear alias clear team --global
+  $ agent2linear alias clear project-status --project
 
   # Clear without confirmation
-  $ linear-create alias clear initiative --force
-  $ linear-create alias clear member --project --force
+  $ agent2linear alias clear initiative --force
+  $ agent2linear alias clear member --project --force
 
 Warning: This will remove ALL aliases of the specified type from the chosen scope.
          Use --dry-run first to preview what will be removed.
@@ -1012,11 +1012,11 @@ milestoneTemplates
   .option('-f, --format <type>', 'Output format: tsv, json')
   .addHelpText('after', `
 Examples:
-  $ linear-create milestone-templates list              # List all templates (grouped by source)
-  $ linear-create mtmpl ls                               # Same as 'list' (alias)
-  $ linear-create milestone-templates list --format json # Output as JSON (flat list)
-  $ linear-create milestone-templates list --format tsv  # Output as TSV (flat list)
-  $ linear-create mtmpl list -f tsv | cut -f1            # Get just template names
+  $ agent2linear milestone-templates list              # List all templates (grouped by source)
+  $ agent2linear mtmpl ls                               # Same as 'list' (alias)
+  $ agent2linear milestone-templates list --format json # Output as JSON (flat list)
+  $ agent2linear milestone-templates list --format tsv  # Output as TSV (flat list)
+  $ agent2linear mtmpl list -f tsv | cut -f1            # Get just template names
 `)
   .action(async (options?: { format?: 'tsv' | 'json' }) => {
     await listMilestoneTemplates(options || {});
@@ -1027,8 +1027,8 @@ milestoneTemplates
   .description('View details of a specific milestone template')
   .addHelpText('after', `
 Examples:
-  $ linear-create milestone-templates view basic-sprint
-  $ linear-create mtmpl view product-launch
+  $ agent2linear milestone-templates view basic-sprint
+  $ agent2linear mtmpl view product-launch
 `)
   .action(async (name: string) => {
     await viewMilestoneTemplate(name);
@@ -1045,18 +1045,18 @@ milestoneTemplates
   .addHelpText('after', `
 Examples:
   # Interactive mode (recommended) - name collected interactively
-  $ linear-create milestone-templates create --interactive
-  $ linear-create mtmpl create -I
+  $ agent2linear milestone-templates create --interactive
+  $ agent2linear mtmpl create -I
 
   # Non-interactive mode - name required as argument
-  $ linear-create milestone-templates create basic-sprint \\
+  $ agent2linear milestone-templates create basic-sprint \\
       --description "Simple 2-week sprint" \\
       --milestone "Planning:+1d:Define sprint goals" \\
       --milestone "Development:+10d:Implementation phase" \\
       --milestone "Review:+14d:Code review and deployment"
 
   # Project scope
-  $ linear-create milestone-templates create --project --interactive
+  $ agent2linear milestone-templates create --project --interactive
 
 Note: Milestone spec format is "name:targetDate:description"
   - name: Required
@@ -1071,9 +1071,9 @@ Note: Milestone spec format is "name:targetDate:description"
       if (!name) {
         console.error('❌ Error: Template name is required in non-interactive mode\n');
         console.error('Provide a name:');
-        console.error('  $ linear-create milestone-templates create my-template --milestone ...\n');
+        console.error('  $ agent2linear milestone-templates create my-template --milestone ...\n');
         console.error('Or use interactive mode:');
-        console.error('  $ linear-create milestone-templates create --interactive\n');
+        console.error('  $ agent2linear milestone-templates create --interactive\n');
         process.exit(1);
       }
       await createTemplate(name, options);
@@ -1087,8 +1087,8 @@ milestoneTemplates
   .option('-p, --project', 'Edit in project scope')
   .addHelpText('after', `
 Examples:
-  $ linear-create milestone-templates edit basic-sprint
-  $ linear-create mtmpl edit product-launch --global
+  $ agent2linear milestone-templates edit basic-sprint
+  $ agent2linear mtmpl edit product-launch --global
 
 Note: If no scope is specified, the template will be edited in its current scope.
 `)
@@ -1105,9 +1105,9 @@ milestoneTemplates
   .option('-y, --yes', 'Skip confirmation prompt')
   .addHelpText('after', `
 Examples:
-  $ linear-create milestone-templates remove basic-sprint
-  $ linear-create mtmpl rm product-launch --yes
-  $ linear-create milestone-templates remove my-sprint --project
+  $ agent2linear milestone-templates remove basic-sprint
+  $ agent2linear mtmpl rm product-launch --yes
+  $ agent2linear milestone-templates remove my-sprint --project
 
 Note: If no scope is specified, the template will be removed from its current scope.
 `)
@@ -1133,15 +1133,15 @@ templates
   .option('-f, --format <type>', 'Output format: tsv, json')
   .addHelpText('after', `
 Examples:
-  $ linear-create templates list              # List all templates (grouped by type)
-  $ linear-create tmpl ls                      # Same as 'list' (alias)
-  $ linear-create templates list issues        # List only issue templates
-  $ linear-create templates list projects      # List only project templates
-  $ linear-create templates list --interactive # Browse interactively
-  $ linear-create templates list --web         # Open in browser
-  $ linear-create templates list --format json # Output as JSON (flat list)
-  $ linear-create templates list --format tsv  # Output as TSV (flat list)
-  $ linear-create tmpl list -f tsv | grep issue  # Filter issue templates
+  $ agent2linear templates list              # List all templates (grouped by type)
+  $ agent2linear tmpl ls                      # Same as 'list' (alias)
+  $ agent2linear templates list issues        # List only issue templates
+  $ agent2linear templates list projects      # List only project templates
+  $ agent2linear templates list --interactive # Browse interactively
+  $ agent2linear templates list --web         # Open in browser
+  $ agent2linear templates list --format json # Output as JSON (flat list)
+  $ agent2linear templates list --format tsv  # Output as TSV (flat list)
+  $ agent2linear tmpl list -f tsv | grep issue  # Filter issue templates
 `)
   .action(async (type?: string, options?: { interactive?: boolean; web?: boolean; format?: 'tsv' | 'json' }) => {
     await listTemplates(type, options || {});
@@ -1153,10 +1153,10 @@ templates
   .option('-w, --web', 'Open templates page in browser (templates do not have individual URLs)')
   .addHelpText('after', `
 Examples:
-  $ linear-create templates view template_abc123
-  $ linear-create tmpl view template_xyz789
-  $ linear-create templates view template_abc123 --web
-  $ linear-create tmpl view mytemplate --web
+  $ agent2linear templates view template_abc123
+  $ agent2linear tmpl view template_xyz789
+  $ agent2linear templates view template_abc123 --web
+  $ agent2linear tmpl view mytemplate --web
 `)
   .action(async (id: string, options) => {
     await viewTemplate(id, options);
@@ -1166,7 +1166,7 @@ Examples:
 const config = cli
   .command('config')
   .alias('cfg')
-  .description('Manage configuration settings for linear-create')
+  .description('Manage configuration settings for agent2linear')
   .addHelpText('before', `
 Current respected settings:
 - \`apiKey\`: Linear API authentication key (get yours at linear.app/settings/api)
@@ -1178,15 +1178,15 @@ Current respected settings:
 - \`projectCacheMinTTL\`: Cache time-to-live in minutes (default: 60, range: 1-1440)
 
 Configuration files:
-- Global:  ~/.config/linear-create/config.json
-- Project: .linear-create/config.json
+- Global:  ~/.config/agent2linear/config.json
+- Project: .agent2linear/config.json
 - Priority: environment > project > global (for apiKey)
             project > global (for other settings)
 `)
   .addHelpText('after', `
 Related Commands:
-  $ linear-create initiatives select   # Interactive initiative picker
-  $ linear-create teams select         # Interactive team picker
+  $ agent2linear initiatives select   # Interactive initiative picker
+  $ agent2linear teams select         # Interactive team picker
 
 Learn More:
   Get your Linear API key at: https://linear.app/settings/api
@@ -1201,8 +1201,8 @@ config
   .description('List all configuration values')
   .addHelpText('after', `
 Examples:
-  $ linear-create config list  # Display all config values and sources
-  $ linear-create cfg show     # Same as 'list' (alias for backward compatibility)
+  $ agent2linear config list  # Display all config values and sources
+  $ agent2linear cfg show     # Same as 'list' (alias for backward compatibility)
 `)
   .action(async () => {
     await listConfig();
@@ -1217,11 +1217,11 @@ config
   .description('Get a single configuration value')
   .addHelpText('after', `
 Examples:
-  $ linear-create config get apiKey
-  $ linear-create cfg get defaultInitiative
-  $ linear-create cfg get defaultProjectTemplate
-  $ linear-create cfg get defaultMilestoneTemplate
-  $ linear-create cfg get projectCacheMinTTL
+  $ agent2linear config get apiKey
+  $ agent2linear cfg get defaultInitiative
+  $ agent2linear cfg get defaultProjectTemplate
+  $ agent2linear cfg get defaultMilestoneTemplate
+  $ agent2linear cfg get projectCacheMinTTL
 `)
   .action(async (key: string) => {
     await getConfigValue(key as ConfigKey);
@@ -1239,12 +1239,12 @@ config
   .option('-p, --project', 'Set in project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create config set apiKey lin_api_xxx...
-  $ linear-create config set defaultInitiative init_abc123 --global
-  $ linear-create config set defaultTeam team_xyz789 --project
-  $ linear-create config set defaultProjectTemplate template_abc123
-  $ linear-create config set defaultMilestoneTemplate basic-sprint
-  $ linear-create config set projectCacheMinTTL 120  # Cache for 2 hours
+  $ agent2linear config set apiKey lin_api_xxx...
+  $ agent2linear config set defaultInitiative init_abc123 --global
+  $ agent2linear config set defaultTeam team_xyz789 --project
+  $ agent2linear config set defaultProjectTemplate template_abc123
+  $ agent2linear config set defaultMilestoneTemplate basic-sprint
+  $ agent2linear config set projectCacheMinTTL 120  # Cache for 2 hours
 `)
   .action(async (key: string, value: string, options) => {
     await setConfig(key, value, options);
@@ -1261,11 +1261,11 @@ config
   .option('-p, --project', 'Remove from project config')
   .addHelpText('after', `
 Examples:
-  $ linear-create config unset apiKey --global
-  $ linear-create config unset defaultTeam --project
-  $ linear-create config unset defaultProjectTemplate
-  $ linear-create config unset defaultMilestoneTemplate
-  $ linear-create config unset projectCacheMinTTL
+  $ agent2linear config unset apiKey --global
+  $ agent2linear config unset defaultTeam --project
+  $ agent2linear config unset defaultProjectTemplate
+  $ agent2linear config unset defaultMilestoneTemplate
+  $ agent2linear config unset projectCacheMinTTL
 `)
   .action(async (key: string, options) => {
     await unsetConfig(key, options);
@@ -1280,10 +1280,10 @@ config
   .option('--value <value>', 'Configuration value (requires --key, non-interactive)')
   .addHelpText('after', `
 Examples:
-  $ linear-create config edit                      # Interactive multi-value editing
-  $ linear-create config edit --global             # Edit global config interactively
-  $ linear-create config edit --key apiKey --value lin_api_xxx  # Non-interactive single value
-  $ linear-create cfg edit                         # Same as 'config edit' (alias)
+  $ agent2linear config edit                      # Interactive multi-value editing
+  $ agent2linear config edit --global             # Edit global config interactively
+  $ agent2linear config edit --key apiKey --value lin_api_xxx  # Non-interactive single value
+  $ agent2linear cfg edit                         # Same as 'config edit' (alias)
 `)
   .action(async (options) => {
     await editConfig(options);
@@ -1369,13 +1369,13 @@ Cache configuration can be managed via config commands:
 `)
   .addHelpText('after', `
 Examples:
-  $ linear-create cache stats             # View cache statistics
-  $ linear-create cache clear             # Clear all cached entities
-  $ linear-create cache clear --entity teams  # Clear specific entity type
+  $ agent2linear cache stats             # View cache statistics
+  $ agent2linear cache clear             # Clear all cached entities
+  $ agent2linear cache clear --entity teams  # Clear specific entity type
 
 Related Commands:
-  $ linear-create config set entityCacheMinTTL 120  # Set 2-hour cache TTL
-  $ linear-create config set enableEntityCache false  # Disable caching
+  $ agent2linear config set entityCacheMinTTL 120  # Set 2-hour cache TTL
+  $ agent2linear config set enableEntityCache false  # Disable caching
 `)
   .action(() => {
     cache.help();
@@ -1386,7 +1386,7 @@ cache
   .description('Show cache statistics')
   .addHelpText('after', `
 Examples:
-  $ linear-create cache stats  # Display cache status and configuration
+  $ agent2linear cache stats  # Display cache status and configuration
 
 This will show:
   • Cache configuration (enabled/disabled features)
@@ -1403,8 +1403,8 @@ cache
   .option('--entity <type>', 'Clear specific entity type (teams, initiatives, members, templates, issue-labels, project-labels)')
   .addHelpText('after', `
 Examples:
-  $ linear-create cache clear                 # Clear all cached entities
-  $ linear-create cache clear --entity teams  # Clear only teams cache
+  $ agent2linear cache clear                 # Clear all cached entities
+  $ agent2linear cache clear --entity teams  # Clear only teams cache
 
 Cache will be automatically repopulated on next access.
 `)
@@ -1429,12 +1429,12 @@ issue
   .option('--show-history', 'Display issue history')
   .addHelpText('after', `
 Examples:
-  $ linear-create issue view ENG-123                    # View issue by identifier
-  $ linear-create issue view <uuid>                     # View issue by UUID
-  $ linear-create issue view ENG-123 --json             # Output as JSON
-  $ linear-create issue view ENG-123 --web              # Open in browser
-  $ linear-create issue view ENG-123 --show-comments    # Include comments
-  $ linear-create issue view ENG-123 --show-history     # Include history
+  $ agent2linear issue view ENG-123                    # View issue by identifier
+  $ agent2linear issue view <uuid>                     # View issue by UUID
+  $ agent2linear issue view ENG-123 --json             # Output as JSON
+  $ agent2linear issue view ENG-123 --web              # Open in browser
+  $ agent2linear issue view ENG-123 --show-comments    # Include comments
+  $ agent2linear issue view ENG-123 --show-history     # Include history
 
 The view command displays comprehensive issue information including:
   • Core details: title, description, status, priority
@@ -1474,17 +1474,17 @@ issue
   .addHelpText('after', `
 Examples:
   # Minimal (uses defaultTeam, auto-assigns to you)
-  $ linear-create issue create --title "Fix login bug"
+  $ agent2linear issue create --title "Fix login bug"
 
   # Standard creation
-  $ linear-create issue create \\
+  $ agent2linear issue create \\
       --title "Add OAuth support" \\
       --team backend \\
       --priority 2 \\
       --estimate 8
 
   # Full-featured creation
-  $ linear-create issue create \\
+  $ agent2linear issue create \\
       --title "Implement authentication" \\
       --team backend \\
       --description "Add OAuth2 with Google and GitHub providers" \\
@@ -1499,19 +1499,19 @@ Examples:
       --web
 
   # Create sub-issue
-  $ linear-create issue create \\
+  $ agent2linear issue create \\
       --title "Write unit tests" \\
       --parent ENG-123 \\
       --team backend
 
   # Read description from file
-  $ linear-create issue create \\
+  $ agent2linear issue create \\
       --title "API Documentation" \\
       --team backend \\
       --description-file docs/api-spec.md
 
   # Create unassigned
-  $ linear-create issue create \\
+  $ agent2linear issue create \\
       --title "Research task" \\
       --team backend \\
       --no-assignee
@@ -1541,8 +1541,8 @@ Config Defaults:
   • defaultProject: Used if --project not specified (must belong to same team)
 
   Set defaults with:
-    $ linear-create config set defaultTeam <team-id>
-    $ linear-create config set defaultProject <project-id>
+    $ agent2linear config set defaultTeam <team-id>
+    $ agent2linear config set defaultProject <project-id>
 `)
   .action(async (options) => {
     await createIssueCommand(options);
@@ -1581,46 +1581,46 @@ issue
   .addHelpText('after', `
 Examples:
   # Update single field
-  $ linear-create issue update ENG-123 --title "New title"
-  $ linear-create issue update ENG-123 --priority 1
-  $ linear-create issue update ENG-123 --state done
+  $ agent2linear issue update ENG-123 --title "New title"
+  $ agent2linear issue update ENG-123 --priority 1
+  $ agent2linear issue update ENG-123 --state done
 
   # Update multiple fields
-  $ linear-create issue update ENG-123 \\
+  $ agent2linear issue update ENG-123 \\
       --title "Updated title" \\
       --priority 2 \\
       --estimate 5 \\
       --due-date 2025-12-31
 
   # Change assignment
-  $ linear-create issue update ENG-123 --assignee john@company.com
-  $ linear-create issue update ENG-123 --no-assignee
+  $ agent2linear issue update ENG-123 --assignee john@company.com
+  $ agent2linear issue update ENG-123 --no-assignee
 
   # Label management (3 modes)
-  $ linear-create issue update ENG-123 --labels "bug,urgent"           # Replace all
-  $ linear-create issue update ENG-123 --add-labels "feature"          # Add to existing
-  $ linear-create issue update ENG-123 --remove-labels "wontfix"       # Remove specific
-  $ linear-create issue update ENG-123 --add-labels "new" --remove-labels "old"  # Add + remove
+  $ agent2linear issue update ENG-123 --labels "bug,urgent"           # Replace all
+  $ agent2linear issue update ENG-123 --add-labels "feature"          # Add to existing
+  $ agent2linear issue update ENG-123 --remove-labels "wontfix"       # Remove specific
+  $ agent2linear issue update ENG-123 --add-labels "new" --remove-labels "old"  # Add + remove
 
   # Subscriber management (3 modes)
-  $ linear-create issue update ENG-123 --subscribers "user1,user2"     # Replace all
-  $ linear-create issue update ENG-123 --add-subscribers "user3"       # Add to existing
-  $ linear-create issue update ENG-123 --remove-subscribers "user1"    # Remove specific
+  $ agent2linear issue update ENG-123 --subscribers "user1,user2"     # Replace all
+  $ agent2linear issue update ENG-123 --add-subscribers "user3"       # Add to existing
+  $ agent2linear issue update ENG-123 --remove-subscribers "user1"    # Remove specific
 
   # Clear fields
-  $ linear-create issue update ENG-123 --no-assignee --no-due-date --no-estimate
-  $ linear-create issue update ENG-123 --no-project --no-cycle --no-parent
+  $ agent2linear issue update ENG-123 --no-assignee --no-due-date --no-estimate
+  $ agent2linear issue update ENG-123 --no-project --no-cycle --no-parent
 
   # Parent relationship
-  $ linear-create issue update ENG-123 --parent ENG-100     # Make sub-issue
-  $ linear-create issue update ENG-123 --no-parent          # Make root issue
+  $ agent2linear issue update ENG-123 --parent ENG-100     # Make sub-issue
+  $ agent2linear issue update ENG-123 --no-parent          # Make root issue
 
   # Move between teams
-  $ linear-create issue update ENG-123 --team frontend --state todo
+  $ agent2linear issue update ENG-123 --team frontend --state todo
 
   # Lifecycle operations
-  $ linear-create issue update ENG-123 --trash              # Move to trash
-  $ linear-create issue update ENG-123 --untrash            # Restore from trash
+  $ agent2linear issue update ENG-123 --trash              # Move to trash
+  $ agent2linear issue update ENG-123 --untrash            # Restore from trash
 
 Field Details:
   • Identifier: Use issue identifier (ENG-123) or UUID
@@ -1672,7 +1672,7 @@ cli
   .description('Interactive first-time setup wizard')
   .addHelpText('after', `
 Examples:
-  $ linear-create setup    # Run interactive setup wizard
+  $ agent2linear setup    # Run interactive setup wizard
 
 This command will guide you through:
   • Setting up your Linear API key

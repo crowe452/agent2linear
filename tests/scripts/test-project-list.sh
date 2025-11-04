@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Test Suite for: linear-create project list
+# Test Suite for: agent2linear project list
 #
 # This script tests the project list command with various filter combinations,
 # smart defaults, override flags, and output formats.
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one team in your Linear workspace
 #   - Existing projects in Linear workspace (uses real data, no test project creation)
 #
@@ -52,6 +52,7 @@ CLI_CMD="node dist/index.js"
 # Test range configuration (can be overridden by command-line args)
 START_TEST=1
 END_TEST=999999
+VERBOSE=false
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -73,6 +74,10 @@ while [[ $# -gt 0 ]]; do
             IFS='-' read -r START_TEST END_TEST <<< "$2"
             shift 2
             ;;
+        --verbose|-v)
+            VERBOSE=true
+            shift
+            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -81,6 +86,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --start N       Run tests starting from #N"
             echo "  --end N         Run tests up to #N"
             echo "  --range N-M     Run tests from #N to #M"
+            echo "  --verbose, -v   Show full output (no truncation)"
             echo "  --help, -h      Show this help message"
             echo ""
             echo "Examples:"
@@ -88,6 +94,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --test 5           # Run only test #5"
             echo "  $0 --start 5          # Run tests 5 and above"
             echo "  $0 --range 1-5        # Run tests 1 through 5"
+            echo "  $0 --test 2 --verbose # Run test #2 with full output"
             exit 0
             ;;
         *)
@@ -161,7 +168,7 @@ run_test() {
 
     if [ "$should_fail" = "true" ]; then
         # This test should fail
-        if eval "$command" 2>&1 > /dev/null; then
+        if eval "$command" > /dev/null 2>&1; then
             echo -e "${RED}❌ FAILED (expected to fail but succeeded)${NC}"
             ((FAILED++))
         else
@@ -174,8 +181,12 @@ run_test() {
         if output=$(eval "$command" 2>&1); then
             echo -e "${GREEN}✅ PASSED${NC}"
             ((PASSED++))
-            # Show first few lines of output for verification
-            echo "$output" | head -5
+            # Show output (truncated unless --verbose)
+            if [ "$VERBOSE" = "true" ]; then
+                echo "$output"
+            else
+                echo "$output" | head -5
+            fi
         else
             echo -e "${RED}❌ FAILED${NC}"
             echo "Error output:"
@@ -234,14 +245,14 @@ run_test \
 # ============================================================
 run_test \
     "JSON output format with all projects" \
-    "$CLI_CMD project list --format json --all-teams --all-leads --all-initiatives | head -20"
+    "$CLI_CMD project list --format json --all-teams --all-leads --all-initiatives"
 
 # ============================================================
 # Test 7: TSV output format
 # ============================================================
 run_test \
     "TSV output format with all projects" \
-    "$CLI_CMD project list --format tsv --all-teams --all-leads --all-initiatives | head -5"
+    "$CLI_CMD project list --format tsv --all-teams --all-leads --all-initiatives"
 
 # ============================================================
 # Test 8: Filter by status

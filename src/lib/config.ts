@@ -3,9 +3,9 @@ import { homedir } from 'os';
 import { join } from 'path';
 import type { Config, ResolvedConfig } from './types.js';
 
-const GLOBAL_CONFIG_DIR = join(homedir(), '.config', 'linear-create');
+const GLOBAL_CONFIG_DIR = join(homedir(), '.config', 'agent2linear');
 const GLOBAL_CONFIG_FILE = join(GLOBAL_CONFIG_DIR, 'config.json');
-const PROJECT_CONFIG_DIR = '.linear-create';
+const PROJECT_CONFIG_DIR = '.agent2linear';
 const PROJECT_CONFIG_FILE = join(PROJECT_CONFIG_DIR, 'config.json');
 
 /**

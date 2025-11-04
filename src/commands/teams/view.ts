@@ -18,7 +18,7 @@ export async function viewTeam(id: string, options: { web?: boolean } = {}) {
 
     if (!team) {
       showEntityNotFound('team', resolvedId);
-      console.error(`   Use 'linear-create teams list' to see available teams\n`);
+      console.error(`   Use 'agent2linear teams list' to see available teams\n`);
       process.exit(1);
     }
 
@@ -43,8 +43,8 @@ export async function viewTeam(id: string, options: { web?: boolean } = {}) {
 
     // Add helpful tip about using team in commands
     console.log(`\n💡 Use this team in commands:`);
-    console.log(`   $ linear-create project create --team ${team.id}`);
-    console.log(`   $ linear-create teams set ${team.id}\n`);
+    console.log(`   $ agent2linear project create --team ${team.id}`);
+    console.log(`   $ agent2linear teams set ${team.id}\n`);
   } catch (error) {
     console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
     process.exit(1);

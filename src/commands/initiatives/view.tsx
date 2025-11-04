@@ -99,9 +99,9 @@ export async function viewInitiative(id?: string, options: ViewOptions = {}) {
     if (!id) {
       console.error('❌ Error: Initiative ID or alias is required when not using --interactive mode');
       console.error('\nUsage:');
-      console.error('  linear-create init view <id>              # View specific initiative');
-      console.error('  linear-create init view --interactive     # Select from list');
-      console.error('  linear-create init view -I --web          # Select and open in browser');
+      console.error('  agent2linear init view <id>              # View specific initiative');
+      console.error('  agent2linear init view --interactive     # Select from list');
+      console.error('  agent2linear init view -I --web          # Select and open in browser');
       process.exit(1);
     }
 

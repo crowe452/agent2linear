@@ -1,12 +1,14 @@
 #!/bin/bash
 #
-# Run All Project Tests
+# Run All Tests (Project + Issue Commands)
 #
-# This script runs both the project create and project update test suites
-# and provides a combined summary report.
+# This script runs both project and issue test suites and provides
+# a combined summary report.
 #
 # Usage:
 #   ./run-all-tests.sh
+#   ./run-all-tests.sh --project-only   # Run only project tests
+#   ./run-all-tests.sh --issue-only     # Run only issue tests
 #
 
 set -e
@@ -20,15 +22,26 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Parse arguments
+RUN_PROJECT=true
+RUN_ISSUE=true
+
+if [ "$1" = "--project-only" ]; then
+  RUN_ISSUE=false
+elif [ "$1" = "--issue-only" ]; then
+  RUN_PROJECT=false
+fi
+
 # Variables
 TOTAL_PASSED=0
 TOTAL_FAILED=0
 TOTAL_TESTS=0
 START_TIME=$(date +%s)
+SUITE_COUNT=0
 
 echo ""
 echo "=========================================="
-echo "  RUNNING ALL PROJECT TEST SUITES"
+echo "  RUNNING ALL TEST SUITES"
 echo "=========================================="
 echo "Start time: $(date)"
 echo ""
@@ -41,8 +54,8 @@ if [ -z "$LINEAR_API_KEY" ]; then
     exit 1
 fi
 
-if [ ! -f "dist/index.js" ]; then
-    echo -e "${RED}ERROR: dist/index.js not found${NC}"
+if [ ! -f "../../dist/index.js" ]; then
+    echo -e "${RED}ERROR: ../../dist/index.js not found${NC}"
     echo "Please build the project first:"
     echo "  npm run build"
     exit 1
@@ -51,21 +64,31 @@ fi
 # Function to extract test results from output
 extract_results() {
     local output="$1"
-    local passed=$(echo "$output" | grep -oE 'Passed:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' || echo "0")
-    local failed=$(echo "$output" | grep -oE 'Failed:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' || echo "0")
-    local total=$(echo "$output" | grep -oE 'Total Tests:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' || echo "0")
+    local passed=$(echo "$output" | grep -oE 'Passed:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | tail -1 || echo "0")
+    local failed=$(echo "$output" | grep -oE 'Failed:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | tail -1 || echo "0")
+    local total=$(echo "$output" | grep -oE 'Total:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | tail -1 || echo "0")
 
     echo "$passed $failed $total"
 }
+
+# ============================================================
+# PROJECT TESTS
+# ============================================================
+
+if [ "$RUN_PROJECT" = true ]; then
+
+echo ""
+echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║         PROJECT TEST SUITES            ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
+echo ""
 
 # ============================================================
 # RUN TEST SUITE 1: PROJECT CREATE
 # ============================================================
 
 echo ""
-echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║   TEST SUITE 1: PROJECT CREATE         ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}[Suite $((++SUITE_COUNT))] PROJECT CREATE${NC}"
 echo ""
 
 CREATE_OUTPUT_FILE="/tmp/test-create-output-$$.log"
@@ -100,9 +123,7 @@ fi
 # ============================================================
 
 echo ""
-echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║   TEST SUITE 2: PROJECT UPDATE         ║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}[Suite $((++SUITE_COUNT))] PROJECT UPDATE${NC}"
 echo ""
 
 UPDATE_OUTPUT_FILE="/tmp/test-update-output-$$.log"
@@ -132,6 +153,158 @@ else
     echo -e "  Status: ${RED}❌ FAILED${NC}"
 fi
 
+fi  # End PROJECT tests
+
+# ============================================================
+# ISSUE TESTS
+# ============================================================
+
+if [ "$RUN_ISSUE" = true ]; then
+
+echo ""
+echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║          ISSUE TEST SUITES             ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
+echo ""
+
+# ============================================================
+# RUN TEST SUITE 3: ISSUE VIEW
+# ============================================================
+
+echo ""
+echo -e "${BLUE}[Suite $((++SUITE_COUNT))] ISSUE VIEW${NC}"
+echo ""
+
+ISSUE_VIEW_OUTPUT="/tmp/test-issue-view-output-$$.log"
+
+if ./test-issue-view.sh 2>&1 | tee "$ISSUE_VIEW_OUTPUT"; then
+    ISSUE_VIEW_EXIT=0
+else
+    ISSUE_VIEW_EXIT=$?
+fi
+
+read VIEW_PASSED VIEW_FAILED VIEW_TOTAL <<< $(extract_results "$(cat "$ISSUE_VIEW_OUTPUT")")
+
+TOTAL_PASSED=$((TOTAL_PASSED + VIEW_PASSED))
+TOTAL_FAILED=$((TOTAL_FAILED + VIEW_FAILED))
+TOTAL_TESTS=$((TOTAL_TESTS + VIEW_TOTAL))
+
+echo ""
+echo -e "${BLUE}Issue View Results:${NC}"
+echo -e "  Passed: ${GREEN}$VIEW_PASSED${NC}"
+echo -e "  Failed: ${RED}$VIEW_FAILED${NC}"
+echo -e "  Total:  $VIEW_TOTAL"
+
+if [ $ISSUE_VIEW_EXIT -eq 0 ]; then
+    echo -e "  Status: ${GREEN}✅ PASSED${NC}"
+else
+    echo -e "  Status: ${RED}❌ FAILED${NC}"
+fi
+
+# ============================================================
+# RUN TEST SUITE 4: ISSUE CREATE
+# ============================================================
+
+echo ""
+echo -e "${BLUE}[Suite $((++SUITE_COUNT))] ISSUE CREATE${NC}"
+echo ""
+
+ISSUE_CREATE_OUTPUT="/tmp/test-issue-create-output-$$.log"
+
+if ./test-issue-create.sh 2>&1 | tee "$ISSUE_CREATE_OUTPUT"; then
+    ISSUE_CREATE_EXIT=0
+else
+    ISSUE_CREATE_EXIT=$?
+fi
+
+read ICREATE_PASSED ICREATE_FAILED ICREATE_TOTAL <<< $(extract_results "$(cat "$ISSUE_CREATE_OUTPUT")")
+
+TOTAL_PASSED=$((TOTAL_PASSED + ICREATE_PASSED))
+TOTAL_FAILED=$((TOTAL_FAILED + ICREATE_FAILED))
+TOTAL_TESTS=$((TOTAL_TESTS + ICREATE_TOTAL))
+
+echo ""
+echo -e "${BLUE}Issue Create Results:${NC}"
+echo -e "  Passed: ${GREEN}$ICREATE_PASSED${NC}"
+echo -e "  Failed: ${RED}$ICREATE_FAILED${NC}"
+echo -e "  Total:  $ICREATE_TOTAL"
+
+if [ $ISSUE_CREATE_EXIT -eq 0 ]; then
+    echo -e "  Status: ${GREEN}✅ PASSED${NC}"
+else
+    echo -e "  Status: ${RED}❌ FAILED${NC}"
+fi
+
+# ============================================================
+# RUN TEST SUITE 5: ISSUE UPDATE
+# ============================================================
+
+echo ""
+echo -e "${BLUE}[Suite $((++SUITE_COUNT))] ISSUE UPDATE${NC}"
+echo ""
+
+ISSUE_UPDATE_OUTPUT="/tmp/test-issue-update-output-$$.log"
+
+if ./test-issue-update.sh 2>&1 | tee "$ISSUE_UPDATE_OUTPUT"; then
+    ISSUE_UPDATE_EXIT=0
+else
+    ISSUE_UPDATE_EXIT=$?
+fi
+
+read IUPDATE_PASSED IUPDATE_FAILED IUPDATE_TOTAL <<< $(extract_results "$(cat "$ISSUE_UPDATE_OUTPUT")")
+
+TOTAL_PASSED=$((TOTAL_PASSED + IUPDATE_PASSED))
+TOTAL_FAILED=$((TOTAL_FAILED + IUPDATE_FAILED))
+TOTAL_TESTS=$((TOTAL_TESTS + IUPDATE_TOTAL))
+
+echo ""
+echo -e "${BLUE}Issue Update Results:${NC}"
+echo -e "  Passed: ${GREEN}$IUPDATE_PASSED${NC}"
+echo -e "  Failed: ${RED}$IUPDATE_FAILED${NC}"
+echo -e "  Total:  $IUPDATE_TOTAL"
+
+if [ $ISSUE_UPDATE_EXIT -eq 0 ]; then
+    echo -e "  Status: ${GREEN}✅ PASSED${NC}"
+else
+    echo -e "  Status: ${RED}❌ FAILED${NC}"
+fi
+
+# ============================================================
+# RUN TEST SUITE 6: ISSUE LIST
+# ============================================================
+
+echo ""
+echo -e "${BLUE}[Suite $((++SUITE_COUNT))] ISSUE LIST${NC}"
+echo ""
+
+ISSUE_LIST_OUTPUT="/tmp/test-issue-list-output-$$.log"
+
+if ./test-issue-list.sh 2>&1 | tee "$ISSUE_LIST_OUTPUT"; then
+    ISSUE_LIST_EXIT=0
+else
+    ISSUE_LIST_EXIT=$?
+fi
+
+read ILIST_PASSED ILIST_FAILED ILIST_TOTAL <<< $(extract_results "$(cat "$ISSUE_LIST_OUTPUT")")
+
+TOTAL_PASSED=$((TOTAL_PASSED + ILIST_PASSED))
+TOTAL_FAILED=$((TOTAL_FAILED + ILIST_FAILED))
+TOTAL_TESTS=$((TOTAL_TESTS + ILIST_TOTAL))
+
+echo ""
+echo -e "${BLUE}Issue List Results:${NC}"
+echo -e "  Passed: ${GREEN}$ILIST_PASSED${NC}"
+echo -e "  Failed: ${RED}$ILIST_FAILED${NC}"
+echo -e "  Total:  $ILIST_TOTAL"
+
+if [ $ISSUE_LIST_EXIT -eq 0 ]; then
+    echo -e "  Status: ${GREEN}✅ PASSED${NC}"
+else
+    echo -e "  Status: ${RED}❌ FAILED${NC}"
+fi
+
+fi  # End ISSUE tests
+
 # ============================================================
 # COMBINED SUMMARY
 # ============================================================
@@ -146,9 +319,19 @@ echo "=========================================="
 echo "  COMBINED TEST SUMMARY"
 echo "=========================================="
 echo ""
-echo -e "${BLUE}Test Suites:${NC}"
-echo "  1. Project Create"
-echo "  2. Project Update"
+
+if [ "$RUN_PROJECT" = true ] && [ "$RUN_ISSUE" = true ]; then
+    echo -e "${BLUE}Test Suites Run:${NC}"
+    echo "  Project: Create, Update"
+    echo "  Issue:   View, Create, Update, List"
+elif [ "$RUN_PROJECT" = true ]; then
+    echo -e "${BLUE}Test Suites Run:${NC}"
+    echo "  Project: Create, Update"
+elif [ "$RUN_ISSUE" = true ]; then
+    echo -e "${BLUE}Test Suites Run:${NC}"
+    echo "  Issue:   View, Create, Update, List"
+fi
+
 echo ""
 echo -e "${BLUE}Combined Results:${NC}"
 echo -e "  Total Tests:  $TOTAL_TESTS"
@@ -163,41 +346,21 @@ fi
 echo ""
 echo -e "${BLUE}Execution Time:${NC}  ${MINUTES}m ${SECONDS}s"
 echo ""
-echo -e "${BLUE}Cleanup Scripts:${NC}"
-echo "  - cleanup-create-projects.sh"
-echo "  - cleanup-update-projects.sh"
-echo ""
 
-# Generate combined cleanup script
-cat > cleanup-all-projects.sh <<'EOF'
-#!/bin/bash
-#
-# Combined cleanup script - runs both cleanup scripts
-#
-
-echo "=========================================="
-echo "  CLEANUP ALL TEST PROJECTS"
-echo "=========================================="
-echo ""
-
-if [ -f cleanup-create-projects.sh ]; then
-    echo "Running cleanup-create-projects.sh..."
-    ./cleanup-create-projects.sh
+if [ "$RUN_PROJECT" = true ]; then
+    echo -e "${BLUE}Project Test Cleanup Scripts:${NC}"
+    echo "  - cleanup-create-projects.sh"
+    echo "  - cleanup-update-projects.sh"
     echo ""
 fi
 
-if [ -f cleanup-update-projects.sh ]; then
-    echo "Running cleanup-update-projects.sh..."
-    ./cleanup-update-projects.sh
+if [ "$RUN_ISSUE" = true ]; then
+    echo -e "${BLUE}Issue Test Cleanup Scripts:${NC}"
+    echo "  - cleanup-issue-view.sh (if generated)"
+    echo "  - cleanup-issue-create.sh (if generated)"
+    echo "  - cleanup-issue-update.sh (if generated)"
     echo ""
 fi
-
-echo "Cleanup complete!"
-EOF
-
-chmod +x cleanup-all-projects.sh
-echo "Combined cleanup script created: cleanup-all-projects.sh"
-echo ""
 
 # Final status
 if [ $TOTAL_FAILED -eq 0 ]; then
@@ -210,15 +373,13 @@ else
     echo -e "${RED}║  ❌ SOME TESTS FAILED                  ║${NC}"
     echo -e "${RED}╚════════════════════════════════════════╝${NC}"
     echo ""
-    echo "Review the logs for details:"
-    echo "  - $CREATE_OUTPUT_FILE"
-    echo "  - $UPDATE_OUTPUT_FILE"
+    echo "Review the logs in /tmp/ for details"
     FINAL_EXIT=1
 fi
 
 echo ""
 
 # Cleanup temp files
-rm -f "$CREATE_OUTPUT_FILE" "$UPDATE_OUTPUT_FILE"
+rm -f /tmp/test-*-output-$$.log 2>/dev/null || true
 
 exit $FINAL_EXIT

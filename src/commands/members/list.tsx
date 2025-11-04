@@ -127,7 +127,7 @@ function App({ options }: { options: ListOptions }) {
         })}
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>💡 Tip: Use "linear-create alias add member &lt;alias&gt; &lt;id&gt;" to create member aliases</Text>
+        <Text dimColor>💡 Tip: Use "agent2linear alias add member &lt;alias&gt; &lt;id&gt;" to create member aliases</Text>
       </Box>
     </Box>
   );
@@ -214,7 +214,7 @@ export async function listMembers(options: ListOptions = {}) {
           const roleDisplay = member.admin ? 'Admin' : 'User';
           console.log(`${member.id}\t${member.name}\t${member.email}\t${statusDisplay}\t${roleDisplay}\t${aliasDisplay}`);
         });
-        console.log('\n💡 Tip: Use "linear-create alias add member <alias> <id>" to create member aliases');
+        console.log('\n💡 Tip: Use "agent2linear alias add member <alias> <id>" to create member aliases');
       }
     } catch (error) {
       console.error(`❌ Error: ${error instanceof Error ? error.message : 'Failed to fetch members'}`);

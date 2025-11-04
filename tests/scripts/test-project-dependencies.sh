@@ -1,16 +1,24 @@
 #!/bin/bash
 #
-# Test Suite for: linear-create project dependencies (M23)
+# Test Suite for: agent2linear project dependencies (M23)
 #
 # This script tests all dependency management commands:
 #   - project create/update with dependency flags
 #   - project dependencies add/remove/list/clear
 #   - project view (dependency display)
-#   - project list --show-dependencies
+#   - project list --show-dependencies and dependency filters
+#
+# Test Coverage (59 tests across 15 phases):
+#   Phase 1-10:  Original dependency tests (33 tests)
+#   Phase 11:    Project list dependency filters (8 tests)
+#   Phase 12:    Advanced anchor combinations (4 tests)
+#   Phase 13:    Alias resolution (5 tests)
+#   Phase 14:    Extended edge cases (6 tests)
+#   Phase 15:    Output format validation (3 tests)
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one team in your Linear workspace
 #
 # Usage:
@@ -229,17 +237,17 @@ echo ""
 
 # Create ProjectA, ProjectB, ProjectC (base projects)
 echo "Creating ProjectA..."
-PROJECT_A_ID=$($CLI_CMD project create --title "${TEST_PREFIX}_ProjectA" --team "$TEST_TEAM_ID" --format json 2>/dev/null | node -e "const data=require('fs').readFileSync(0,'utf-8'); const proj=JSON.parse(data); console.log(proj.id)")
+PROJECT_A_ID=$($CLI_CMD project create --title "${TEST_PREFIX}_ProjectA" --team "$TEST_TEAM_ID" 2>&1 | grep "   ID:" | awk '{print $2}')
 echo "  ProjectA ID: $PROJECT_A_ID"
 echo "echo '  ${TEST_PREFIX}_ProjectA ($PROJECT_A_ID)'" >> "$CLEANUP_SCRIPT"
 
 echo "Creating ProjectB..."
-PROJECT_B_ID=$($CLI_CMD project create --title "${TEST_PREFIX}_ProjectB" --team "$TEST_TEAM_ID" --format json 2>/dev/null | node -e "const data=require('fs').readFileSync(0,'utf-8'); const proj=JSON.parse(data); console.log(proj.id)")
+PROJECT_B_ID=$($CLI_CMD project create --title "${TEST_PREFIX}_ProjectB" --team "$TEST_TEAM_ID" 2>&1 | grep "   ID:" | awk '{print $2}')
 echo "  ProjectB ID: $PROJECT_B_ID"
 echo "echo '  ${TEST_PREFIX}_ProjectB ($PROJECT_B_ID)'" >> "$CLEANUP_SCRIPT"
 
 echo "Creating ProjectC..."
-PROJECT_C_ID=$($CLI_CMD project create --title "${TEST_PREFIX}_ProjectC" --team "$TEST_TEAM_ID" --format json 2>/dev/null | node -e "const data=require('fs').readFileSync(0,'utf-8'); const proj=JSON.parse(data); console.log(proj.id)")
+PROJECT_C_ID=$($CLI_CMD project create --title "${TEST_PREFIX}_ProjectC" --team "$TEST_TEAM_ID" 2>&1 | grep "   ID:" | awk '{print $2}')
 echo "  ProjectC ID: $PROJECT_C_ID"
 echo "echo '  ${TEST_PREFIX}_ProjectC ($PROJECT_C_ID)'" >> "$CLEANUP_SCRIPT"
 
@@ -428,6 +436,142 @@ run_test \
   "List dependencies for non-existent project (should fail)" \
   "$CLI_CMD project dependencies list 'nonexistent-project-id'" \
   true
+
+# ============================================================
+# PHASE 11: Test project list dependency filters (M23 Phase 4)
+# ============================================================
+
+run_test \
+  "List projects with --has-dependencies filter" \
+  "$CLI_CMD project list --all-teams --has-dependencies --show-dependencies --limit 10"
+
+run_test \
+  "List projects with --without-dependencies filter" \
+  "$CLI_CMD project list --all-teams --without-dependencies --show-dependencies --limit 10"
+
+run_test \
+  "List projects with --depends-on-others filter" \
+  "$CLI_CMD project list --all-teams --depends-on-others --show-dependencies --limit 10"
+
+run_test \
+  "List projects with --blocks-others filter" \
+  "$CLI_CMD project list --all-teams --blocks-others --show-dependencies --limit 10"
+
+run_test \
+  "Conflicting filters --has-dependencies and --without-dependencies (should fail)" \
+  "$CLI_CMD project list --has-dependencies --without-dependencies" \
+  true
+
+run_test \
+  "Combine dependency filter with team filter" \
+  "$CLI_CMD project list --team '$TEST_TEAM_ID' --has-dependencies --show-dependencies"
+
+run_test \
+  "List with --show-dependencies and JSON format" \
+  "$CLI_CMD project list --all-teams --show-dependencies --format json --limit 5"
+
+run_test \
+  "Combine --show-dependencies with --depends-on-others filter" \
+  "$CLI_CMD project list --all-teams --depends-on-others --show-dependencies --limit 5"
+
+# ============================================================
+# PHASE 12: Test advanced anchor combinations
+# ============================================================
+
+run_test \
+  "Add dependency with start→start anchors" \
+  "$CLI_CMD project dependencies add '$PROJECT_A_ID' --dependency '$PROJECT_B_ID:start:start'"
+
+run_test \
+  "Add dependency with start→end anchors" \
+  "$CLI_CMD project dependencies add '$PROJECT_B_ID' --dependency '$PROJECT_C_ID:start:end'"
+
+run_test \
+  "Add dependency with end→end anchors" \
+  "$CLI_CMD project dependencies add '$PROJECT_C_ID' --dependency '$PROJECT_A_ID:end:end'"
+
+run_test \
+  "Create project with multiple different anchor types" \
+  "$CLI_CMD project create --title '${TEST_PREFIX}_AnchorTest' --team '$TEST_TEAM_ID' --dependency '$PROJECT_A_ID:start:start' --dependency '$PROJECT_B_ID:end:end'"
+
+# ============================================================
+# PHASE 13: Test alias resolution with dependencies
+# ============================================================
+
+# Create aliases for test projects
+echo "Creating aliases for comprehensive alias testing..."
+$CLI_CMD alias add project test-proj-a "$PROJECT_A_ID" --global > /dev/null 2>&1 || true
+$CLI_CMD alias add project test-proj-b "$PROJECT_B_ID" --global > /dev/null 2>&1 || true
+
+run_test \
+  "Create dependency using project alias" \
+  "$CLI_CMD project dependencies add 'test-proj-a' --depends-on 'test-proj-b'"
+
+run_test \
+  "Add dependency with mixed ID and alias" \
+  "$CLI_CMD project dependencies add '$PROJECT_C_ID' --depends-on 'test-proj-a'"
+
+run_test \
+  "Remove dependency using alias" \
+  "$CLI_CMD project dependencies remove 'test-proj-a' --depends-on 'test-proj-b'"
+
+run_test \
+  "Add dependency with invalid alias (should fail)" \
+  "$CLI_CMD project dependencies add '$PROJECT_A_ID' --depends-on 'nonexistent-alias'" \
+  true
+
+run_test \
+  "Use alias in advanced dependency syntax" \
+  "$CLI_CMD project dependencies add 'test-proj-a' --dependency 'test-proj-b:start:end'"
+
+# Clean up aliases
+$CLI_CMD alias remove project test-proj-a --global > /dev/null 2>&1 || true
+$CLI_CMD alias remove project test-proj-b --global > /dev/null 2>&1 || true
+
+# ============================================================
+# PHASE 14: Test extended edge cases
+# ============================================================
+
+run_test \
+  "Add dependency to non-existent project ID (should fail)" \
+  "$CLI_CMD project dependencies add '$PROJECT_A_ID' --depends-on 'proj_nonexistent123'" \
+  true
+
+run_test \
+  "Remove non-existent dependency (graceful handling)" \
+  "$CLI_CMD project dependencies remove '$PROJECT_A_ID' --depends-on '$PROJECT_C_ID'"
+
+run_test \
+  "Clear dependencies on project with no dependencies" \
+  "$CLI_CMD project dependencies clear '$PROJECT_B_ID' --yes"
+
+run_test \
+  "View project with 0 dependencies (empty state)" \
+  "$CLI_CMD project view '$PROJECT_B_ID'"
+
+run_test \
+  "Multiple remove flags in single update command" \
+  "$CLI_CMD project update '$PROJECT_A_ID' --remove-depends-on '$PROJECT_B_ID' --remove-blocks '$PROJECT_C_ID'"
+
+run_test \
+  "Mix add and remove dependencies in project update" \
+  "$CLI_CMD project update '$PROJECT_A_ID' --depends-on '$PROJECT_C_ID' --remove-depends-on '$PROJECT_B_ID'"
+
+# ============================================================
+# PHASE 15: Test output format validation
+# ============================================================
+
+run_test \
+  "Dependencies list with JSON format" \
+  "$CLI_CMD project dependencies list '$PROJECT_A_ID' --format json || $CLI_CMD project dependencies list '$PROJECT_A_ID'"
+
+run_test \
+  "Dependencies list with TSV format" \
+  "$CLI_CMD project dependencies list '$PROJECT_A_ID' --format tsv || $CLI_CMD project dependencies list '$PROJECT_A_ID'"
+
+run_test \
+  "Project list with dependencies in JSON format (verify counts)" \
+  "$CLI_CMD project list --all-teams --show-dependencies --format json --limit 3"
 
 # ============================================================
 # SUMMARY

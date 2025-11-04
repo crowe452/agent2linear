@@ -40,7 +40,7 @@ export async function setInitiative(initiativeId: string, options: SetInitiative
       'Initiative ID': resolvedId
     });
 
-    showInfo(`Use 'linear-create config show' to view your configuration`);
+    showInfo(`Use 'agent2linear config show' to view your configuration`);
   } catch (error) {
     showError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     process.exit(1);

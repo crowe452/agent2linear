@@ -354,8 +354,8 @@ function ConfigEditor({ options }: { options: EditOptions }) {
   // Step 1: Select scope
   if (step === 'scope') {
     const scopeItems = [
-      { label: 'Global (~/.config/linear-create/config.json)', value: 'global' as const },
-      { label: 'Project (.linear-create/config.json)', value: 'project' as const },
+      { label: 'Global (~/.config/agent2linear/config.json)', value: 'global' as const },
+      { label: 'Project (.agent2linear/config.json)', value: 'project' as const },
     ];
 
     return (

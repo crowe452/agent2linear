@@ -15,10 +15,10 @@ export async function listMilestoneTemplates(options: ListOptions = {}) {
       console.log('');
       console.log('Create templates at:');
       if (!hasGlobalTemplates()) {
-        console.log('  Global:  ~/.config/linear-create/milestone-templates.json');
+        console.log('  Global:  ~/.config/agent2linear/milestone-templates.json');
       }
       if (!hasProjectTemplates()) {
-        console.log('  Project: .linear-create/milestone-templates.json');
+        console.log('  Project: .agent2linear/milestone-templates.json');
       }
       console.log('');
       return;
@@ -73,7 +73,7 @@ export async function listMilestoneTemplates(options: ListOptions = {}) {
         console.log('');
       }
 
-      console.log('💡 Tip: Use "linear-create config set defaultMilestoneTemplate <name>" to save a default');
+      console.log('💡 Tip: Use "agent2linear config set defaultMilestoneTemplate <name>" to save a default');
     }
   } catch (error) {
     console.error(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

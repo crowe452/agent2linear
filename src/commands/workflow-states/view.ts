@@ -19,7 +19,8 @@ export function viewWorkflowState(program: Command) {
         const state = await getWorkflowStateById(resolvedId);
 
         if (!state) {
-          console.error(`❌ Workflow state not found: ${id}`);
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('workflow state', id, 'workflow-states list'));
           process.exit(1);
         }
 

@@ -1,4 +1,4 @@
-# linear-create Milestones
+# agent2linear Milestones
 
 **Note**: For completed milestones, see archive files:
 - M01-M11, M13: [archive/MILESTONES_01.md](archive/MILESTONES_01.md) (v0.1.0 - v0.13.0)
@@ -40,14 +40,14 @@
 ### Deliverable
 ```bash
 # Interactive issue creation with prompts
-$ linear-create issue create -I
+$ agent2linear issue create -I
 ? Title: Fix authentication bug
 ? Team: Backend
 ? Description: Users cannot log in...
 ✅ Created issue ENG-456: Fix authentication bug
 
 # Interactive issue list with filter selection
-$ linear-create issue list -I
+$ agent2linear issue list -I
 ? Show issues for: (Me) / All users / Specific user
 ? Team filter: (Default team) / All teams / Specific team
 ...
@@ -155,21 +155,21 @@ This meta-milestone defines high-level tasks that map to detailed implementation
 ### Deliverable
 ```bash
 # Create with defaults (auto-assigned to you)
-$ linear-create issue create --title "Fix auth bug"
+$ agent2linear issue create --title "Fix auth bug"
 ✅ Created issue ENG-456: Fix auth bug (assigned to you)
 
 # Update multiple fields
-$ linear-create issue update ENG-456 --priority 1 --state in-progress --add-labels urgent
+$ agent2linear issue update ENG-456 --priority 1 --state in-progress --add-labels urgent
 ✅ Updated issue ENG-456
 
 # View in terminal
-$ linear-create issue view ENG-456
+$ agent2linear issue view ENG-456
 ENG-456: Fix auth bug
 Status: In Progress | Priority: Urgent | Team: Backend
 ...
 
 # List with defaults (me + defaultTeam + active)
-$ linear-create issue list
+$ agent2linear issue list
 ENG-456  Fix auth bug       Urgent  In Progress  Backend
 ENG-123  API redesign       High    Backlog      Backend
 ```
@@ -307,7 +307,7 @@ $ npm run typecheck
 ✅ No errors
 
 # Verify config support
-$ linear-create config set defaultProject "my-project"
+$ agent2linear config set defaultProject "my-project"
 ✅ Set defaultProject = my-project
 ```
 
@@ -380,7 +380,7 @@ $ linear-create config set defaultProject "my-project"
 #### Deliverable
 ```bash
 # View by identifier
-$ linear-create issue view ENG-123
+$ agent2linear issue view ENG-123
 ENG-123: Fix authentication bug
 Status: In Progress | Priority: Urgent | Team: Backend
 Assignee: john@company.com
@@ -390,11 +390,11 @@ Description:
 Users cannot log in after password reset...
 
 # JSON output
-$ linear-create issue view ENG-123 --json
+$ agent2linear issue view ENG-123 --json
 {"id": "...", "identifier": "ENG-123", "title": "Fix authentication bug", ...}
 
 # Open in browser
-$ linear-create issue view ENG-123 --web
+$ agent2linear issue view ENG-123 --web
 Opening https://linear.app/company/issue/ENG-123...
 ```
 
@@ -672,15 +672,15 @@ Opening https://linear.app/company/issue/ENG-123...
 #### Deliverable
 ```bash
 # Minimal (uses defaultTeam from config)
-$ linear-create issue create --title "Fix login bug"
+$ agent2linear issue create --title "Fix login bug"
 ✅ Created issue ENG-456: Fix login bug (assigned to you)
 
 # Standard non-interactive
-$ linear-create issue create --title "Add OAuth" --team backend --priority 2
+$ agent2linear issue create --title "Add OAuth" --team backend --priority 2
 ✅ Created issue ENG-457: Add OAuth
 
 # Full featured
-$ linear-create issue create \
+$ agent2linear issue create \
   --title "Implement auth" \
   --team backend \
   --description "Add OAuth2 support" \
@@ -886,33 +886,33 @@ Opening in browser...
 #### Deliverable
 ```bash
 # Update single field
-$ linear-create issue update ENG-123 --state done
+$ agent2linear issue update ENG-123 --state done
 ✅ Updated issue ENG-123
 
 # Multiple fields
-$ linear-create issue update ENG-123 --priority 1 --assignee jane@acme.com --due-date 2025-02-01
+$ agent2linear issue update ENG-123 --priority 1 --assignee jane@acme.com --due-date 2025-02-01
 ✅ Updated issue ENG-123
 
 # Label management
-$ linear-create issue update ENG-123 --add-labels "urgent,bug"
+$ agent2linear issue update ENG-123 --add-labels "urgent,bug"
 ✅ Added labels to ENG-123
 
-$ linear-create issue update ENG-123 --remove-labels "feature"
+$ agent2linear issue update ENG-123 --remove-labels "feature"
 ✅ Removed labels from ENG-123
 
 # Clear fields
-$ linear-create issue update ENG-123 --no-assignee --no-due-date --no-estimate
+$ agent2linear issue update ENG-123 --no-assignee --no-due-date --no-estimate
 ✅ Cleared fields on ENG-123
 
 # Move between teams/projects
-$ linear-create issue update ENG-123 --team frontend --project "Mobile App"
+$ agent2linear issue update ENG-123 --team frontend --project "Mobile App"
 ✅ Moved ENG-123 to frontend team
 
 # Sub-issue management
-$ linear-create issue update ENG-123 --parent ENG-100
+$ agent2linear issue update ENG-123 --parent ENG-100
 ✅ Made ENG-123 a sub-issue of ENG-100
 
-$ linear-create issue update ENG-123 --no-parent
+$ agent2linear issue update ENG-123 --no-parent
 ✅ Made ENG-123 a root issue
 ```
 
@@ -1132,7 +1132,7 @@ The `project list` command initially had severe N+1 query problems:
 
 **Phase 1 Deliverable:**
 ```bash
-$ linear-create issue list --limit 100
+$ agent2linear issue list --limit 100
 Identifier  Title           State       Priority  Assignee  Team
 BAN-277     Test Issue      Backlog     None      alan      BAN
 ...
@@ -1176,26 +1176,26 @@ Total: 100 issue(s)
 **Phase 2 Deliverable:**
 ```bash
 # Default: My active issues in default team
-$ linear-create issue list
+$ agent2linear issue list
 Identifier  Title           State       Priority  Assignee  Team
 BAN-273     Updated Title   Backlog     Urgent    steve     BAN
 ...
 Total: 5 issue(s)
 
 # Override assignee default
-$ linear-create issue list --all-assignees
+$ agent2linear issue list --all-assignees
 [Shows all users' active issues]
 
 # Filter by priority
-$ linear-create issue list --priority 1
+$ agent2linear issue list --priority 1
 [Shows only Urgent issues assigned to me]
 
 # Show completed instead of active
-$ linear-create issue list --completed
+$ agent2linear issue list --completed
 [Shows completed issues assigned to me]
 
 # Combine filters
-$ linear-create issue list --team backend --priority 2 --state todo
+$ agent2linear issue list --team backend --priority 2 --state todo
 [Shows High priority Todo issues in backend team assigned to me]
 ```
 
@@ -1277,7 +1277,7 @@ $ linear-create issue list --team backend --priority 2 --state todo
 **Phase 3 Deliverable:**
 ```bash
 # Sort by priority descending (default)
-$ linear-create issue list --limit 10 --sort priority --order desc
+$ agent2linear issue list --limit 10 --sort priority --order desc
 Identifier  Title           State    Priority  Assignee  Team
 BAN-273     Critical Bug    Backlog  Urgent    steve     BAN
 BAN-179     New Feature     Todo     High      steve     BAN
@@ -1285,7 +1285,7 @@ BAN-179     New Feature     Todo     High      steve     BAN
 Total: 10 issue(s)
 
 # JSON output for scripting
-$ linear-create issue list --limit 5 --format json | jq '.[].identifier'
+$ agent2linear issue list --limit 5 --format json | jq '.[].identifier'
 "BAN-276"
 "BAN-275"
 "BAN-274"
@@ -1293,17 +1293,17 @@ $ linear-create issue list --limit 5 --format json | jq '.[].identifier'
 "BAN-270"
 
 # TSV output for shell scripts
-$ linear-create issue list --limit 3 --format tsv | cut -f1,2
+$ agent2linear issue list --limit 3 --format tsv | cut -f1,2
 identifier	title
 BAN-276	TEST_UPDATE_20251030_122458_BASE_04_Subscribers
 BAN-275	TEST_UPDATE_20251030_122458_BASE_03_Parent
 
 # Advanced filters combined
-$ linear-create issue list --root-only --search "authentication" --sort due --order asc
+$ agent2linear issue list --root-only --search "authentication" --sort due --order asc
 [Shows root-level issues containing "authentication", sorted by due date]
 
 # Web mode
-$ linear-create issue list --team backend --priority 1 --web
+$ agent2linear issue list --team backend --priority 1 --web
 Opening Linear in browser: https://linear.app/team/backend?priority=1
 ```
 
@@ -1446,46 +1446,46 @@ Opening Linear in browser: https://linear.app/team/backend?priority=1
 #### Deliverable
 ```bash
 # Default: My issues in default team/initiative, active only
-$ linear-create issue list
+$ agent2linear issue list
 ENG-456  Fix auth bug       Urgent  In Progress  Backend
 ENG-123  API redesign       High    Backlog      Backend
 
 # Override defaults
-$ linear-create issue list --all-assignees
+$ agent2linear issue list --all-assignees
 [Shows issues for all users]
 
-$ linear-create issue list --team backend --all-leads
+$ agent2linear issue list --team backend --all-leads
 [Shows all projects in backend team, any lead]
 
 # Specific filters
-$ linear-create issue list --team eng --state in-progress
-$ linear-create issue list --assignee john@acme.com --priority 1
-$ linear-create issue list --project "Q1 Goals" --active
+$ agent2linear issue list --team eng --state in-progress
+$ agent2linear issue list --assignee john@acme.com --priority 1
+$ agent2linear issue list --project "Q1 Goals" --active
 
 # Search
-$ linear-create issue list --search "authentication"
+$ agent2linear issue list --search "authentication"
 
 # Label filtering (multiple)
-$ linear-create issue list --label bug --label urgent
+$ agent2linear issue list --label bug --label urgent
 
 # Sub-issues
-$ linear-create issue list --parent ENG-123
-$ linear-create issue list --no-parent
+$ agent2linear issue list --parent ENG-123
+$ agent2linear issue list --no-parent
 
 # Status filtering
-$ linear-create issue list --completed
-$ linear-create issue list --all-states
+$ agent2linear issue list --completed
+$ agent2linear issue list --all-states
 
 # Output formats
-$ linear-create issue list --format json | jq '.[] | {id, title}'
-$ linear-create issue list --format tsv | cut -f1,2
+$ agent2linear issue list --format json | jq '.[] | {id, title}'
+$ agent2linear issue list --format tsv | cut -f1,2
 
 # Sorting
-$ linear-create issue list --sort due --order asc
-$ linear-create issue list --sort updated --order desc --limit 100
+$ agent2linear issue list --sort due --order asc
+$ agent2linear issue list --sort updated --order desc --limit 100
 
 # Open in Linear web
-$ linear-create issue list --team backend --web
+$ agent2linear issue list --team backend --web
 ```
 
 #### Final Release Verification (v0.24.0-alpha.5 → v0.24.0)
@@ -1589,12 +1589,12 @@ $ git tag --list "v0.24.0*"
 v0.24.0-rc.1
 v0.24.0
 
-$ linear-create --version
+$ agent2linear --version
 0.24.0
 
 # Feature verification
-$ linear-create issue list --help
-Usage: linear-create issue list [options]
+$ agent2linear issue list --help
+Usage: agent2linear issue list [options]
 
 List issues with smart defaults (assignee=me, defaultTeam, active only)
 
@@ -1605,10 +1605,10 @@ Options:
   ...
 
 # All 4 issue commands functional
-$ linear-create issue create --title "Test" --team backend
-$ linear-create issue view ENG-123
-$ linear-create issue update ENG-123 --priority 1
-$ linear-create issue list --limit 10
+$ agent2linear issue create --title "Test" --team backend
+$ agent2linear issue view ENG-123
+$ agent2linear issue update ENG-123 --priority 1
+$ agent2linear issue list --limit 10
 ```
 
 #### Verification

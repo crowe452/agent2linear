@@ -50,7 +50,7 @@ export async function unsetConfig(key: string, options: UnsetConfigOptions) {
               : 'Default Project Template';
 
     console.log(`✅ ${keyLabel} removed from ${scopeLabel} config`);
-    console.log(`   Use 'linear-create config list' to view your configuration`);
+    console.log(`   Use 'agent2linear config list' to view your configuration`);
   } catch (error) {
     console.error(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     process.exit(1);

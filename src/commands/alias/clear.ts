@@ -115,7 +115,7 @@ export async function clearAliasCommand(
     showSuccess('Aliases cleared successfully!', details);
 
     if (result.count > 0) {
-      showInfo('Use "linear-create alias list" to view remaining aliases');
+      showInfo('Use "agent2linear alias list" to view remaining aliases');
     }
   } catch (error) {
     showError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

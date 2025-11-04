@@ -85,10 +85,10 @@ export function showSuccess(message: string, details?: Record<string, string>): 
  * @param hint - Optional hint or suggestion for resolving the error
  *
  * @example
- * showError('Team not found', 'Use "linear-create teams list" to see available teams')
+ * showError('Team not found', 'Use "agent2linear teams list" to see available teams')
  * // Output:
  * // ❌ Team not found
- * //    Use "linear-create teams list" to see available teams
+ * //    Use "agent2linear teams list" to see available teams
  */
 export function showError(message: string, hint?: string): void {
   console.error(`❌ ${message}`);
@@ -102,9 +102,9 @@ export function showError(message: string, hint?: string): void {
  * @param message - Info message (without 💡 prefix)
  *
  * @example
- * showInfo('Use "linear-create config show" to view your configuration')
+ * showInfo('Use "agent2linear config show" to view your configuration')
  * // Output:
- * // 💡 Use "linear-create config show" to view your configuration
+ * // 💡 Use "agent2linear config show" to view your configuration
  */
 export function showInfo(message: string): void {
   console.log(`\n💡 ${message}\n`);

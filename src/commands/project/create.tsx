@@ -87,11 +87,11 @@ async function createProjectNonInteractive(options: CreateOptions) {
     if (!options.title) {
       console.error('❌ Error: --title is required\n');
       console.error('Provide the title:');
-      console.error('  linear-create proj create --title "My Project"\n');
+      console.error('  agent2linear proj create --title "My Project"\n');
       console.error('Or use interactive mode:');
-      console.error('  linear-create proj create --interactive\n');
+      console.error('  agent2linear proj create --interactive\n');
       console.error('For all options, see:');
-      console.error('  linear-create project create --help\n');
+      console.error('  agent2linear project create --help\n');
       process.exit(1);
     }
 
@@ -171,12 +171,12 @@ async function createProjectNonInteractive(options: CreateOptions) {
       console.error('❌ Error: Team is required for project creation\n');
       console.error('Please specify a team using one of these options:\n');
       console.error('  1. Use --team flag:');
-      console.error(`     $ linear-create proj new --title "${title}" --team team_xxx\n`);
+      console.error(`     $ agent2linear proj new --title "${title}" --team team_xxx\n`);
       console.error('  2. Set a default team:');
-      console.error('     $ linear-create teams select');
-      console.error('     $ linear-create config set defaultTeam team_xxx\n');
+      console.error('     $ agent2linear teams select');
+      console.error('     $ agent2linear config set defaultTeam team_xxx\n');
       console.error('  3. List available teams:');
-      console.error('     $ linear-create teams list\n');
+      console.error('     $ agent2linear teams list\n');
       process.exit(1);
     }
 
@@ -559,7 +559,7 @@ async function createProjectNonInteractive(options: CreateOptions) {
           console.log(`\n✅ Created ${successfulDeps.length} of ${dependenciesToCreate.length} dependencies`);
           if (failedDeps.some(f => !f.error.includes('Relation exists') && !f.error.includes('already exists'))) {
             console.log(`\n💡 Tip: Fix failed dependencies with:`);
-            console.log(`   linear-create project dependencies add ${result.id} --depends-on <project-id>`);
+            console.log(`   agent2linear project dependencies add ${result.id} --depends-on <project-id>`);
           }
         }
       }

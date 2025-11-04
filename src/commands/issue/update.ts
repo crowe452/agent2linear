@@ -225,11 +225,11 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
       console.error('❌ Error: No update options specified\n');
       console.error('You must provide at least one field to update.');
       console.error('\nExamples:');
-      console.error('  linear-create issue update ENG-123 --title "New title"');
-      console.error('  linear-create issue update ENG-123 --priority 1');
-      console.error('  linear-create issue update ENG-123 --state done\n');
+      console.error('  agent2linear issue update ENG-123 --title "New title"');
+      console.error('  agent2linear issue update ENG-123 --priority 1');
+      console.error('  agent2linear issue update ENG-123 --state done\n');
       console.error('For all options, see:');
-      console.error('  linear-create issue update --help\n');
+      console.error('  agent2linear issue update --help\n');
       process.exit(1);
     }
 
@@ -278,7 +278,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
         console.error(`❌ Error: Issue not found: "${identifier}"`);
         console.error(`   Expected format: ENG-123 or UUID\n`);
         console.error('To list issues:');
-        console.error('  linear-create issue list\n');
+        console.error('  agent2linear issue list\n');
         process.exit(1);
       }
 
@@ -491,7 +491,7 @@ async function updateIssueNonInteractive(identifier: string, options: UpdateOpti
           console.error(`❌ Error: Cannot move to team "${teamCheck.name}"\n`);
           console.error(`   Current state "${currentState.name}" belongs to team "${currentIssue.team.name}"`);
           console.error(`\n   To move teams, you must also change the workflow state:`);
-          console.error(`     linear-create issue update ${identifier} --team ${teamCheck.name} --state <state-id>\n`);
+          console.error(`     agent2linear issue update ${identifier} --team ${teamCheck.name} --state <state-id>\n`);
           process.exit(1);
         }
       }

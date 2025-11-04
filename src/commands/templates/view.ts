@@ -23,8 +23,8 @@ export async function viewTemplate(templateId: string, options: { web?: boolean 
     const template = await getTemplateById(resolvedId);
 
     if (!template) {
-      console.error(`❌ Template not found: ${resolvedId}`);
-      console.error('   Use "linear-create templates list" to see available templates');
+      const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+      console.error(formatEntityNotFoundError('template', resolvedId, 'templates list'));
       process.exit(1);
     }
 
@@ -51,16 +51,16 @@ export async function viewTemplate(templateId: string, options: { web?: boolean 
     // Show usage tip
     if (template.type === 'project') {
       console.log('💡 Use this template:');
-      console.log(`   $ linear-create project create --template ${template.id}`);
+      console.log(`   $ agent2linear project create --template ${template.id}`);
       console.log('');
       console.log('   Set as default:');
-      console.log(`   $ linear-create config set defaultProjectTemplate ${template.id}`);
+      console.log(`   $ agent2linear config set defaultProjectTemplate ${template.id}`);
     } else if (template.type === 'issue') {
       console.log('💡 Use this template:');
-      console.log(`   $ linear-create issues create --template ${template.id}`);
+      console.log(`   $ agent2linear issues create --template ${template.id}`);
       console.log('');
       console.log('   Set as default:');
-      console.log(`   $ linear-create config set defaultIssueTemplate ${template.id}`);
+      console.log(`   $ agent2linear config set defaultIssueTemplate ${template.id}`);
     }
     console.log('');
   } catch (error) {

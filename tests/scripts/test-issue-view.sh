@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Test Suite for: linear-create issue view (M15.2)
+# Test Suite for: agent2linear issue view (M15.2)
 #
 # This script tests the issue view command with various options.
 # NOTE: This requires existing issues in your Linear workspace to test against.
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one issue in your Linear workspace
 #
 # Usage:
@@ -30,7 +30,21 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Script identification
+SCRIPT_NAME=$(basename "$0")
+TIMESTAMP=$(date +%s)
+
+# Print runtime header
+echo ""
+echo -e "${YELLOW}==========================================${NC}"
+echo -e "${YELLOW}TEST SUITE: ${BOLD}${SCRIPT_NAME}${NC}"
+echo -e "${YELLOW}Description: Issue View Tests${NC}"
+echo -e "${YELLOW}Timestamp: ${TIMESTAMP}${NC}"
+echo -e "${YELLOW}==========================================${NC}"
+echo ""
 
 # Test counters
 PASSED=0
@@ -96,15 +110,15 @@ echo -e "${BLUE}Current Configuration:${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # Check for config files
-if [ -f ".linear-create/config.json" ]; then
-  echo -e "${YELLOW}Project config found: .linear-create/config.json${NC}"
-  cat .linear-create/config.json | jq . 2>/dev/null || cat .linear-create/config.json
+if [ -f ".agent2linear/config.json" ]; then
+  echo -e "${YELLOW}Project config found: .agent2linear/config.json${NC}"
+  cat .agent2linear/config.json | jq . 2>/dev/null || cat .agent2linear/config.json
   echo ""
 fi
 
-if [ -f "$HOME/.config/linear-create/config.json" ]; then
-  echo -e "${YELLOW}Global config found: ~/.config/linear-create/config.json${NC}"
-  cat "$HOME/.config/linear-create/config.json" | jq . 2>/dev/null || cat "$HOME/.config/linear-create/config.json"
+if [ -f "$HOME/.config/agent2linear/config.json" ]; then
+  echo -e "${YELLOW}Global config found: ~/.config/agent2linear/config.json${NC}"
+  cat "$HOME/.config/agent2linear/config.json" | jq . 2>/dev/null || cat "$HOME/.config/agent2linear/config.json"
   echo ""
 fi
 

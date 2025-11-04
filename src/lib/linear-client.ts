@@ -1021,7 +1021,7 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<IssueLis
     }
 
     if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-      console.error('[linear-create] Issue filters:', JSON.stringify(graphqlFilter, null, 2));
+      console.error('[agent2linear] Issue filters:', JSON.stringify(graphqlFilter, null, 2));
     }
 
     // ========================================
@@ -1035,7 +1035,7 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<IssueLis
     const targetLimit = filters?.limit || 50;
 
     if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-      console.error('[linear-create] Pagination:', { pageSize, fetchAll, targetLimit });
+      console.error('[agent2linear] Pagination:', { pageSize, fetchAll, targetLimit });
     }
 
     // ========================================
@@ -1149,7 +1149,7 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<IssueLis
       cursor = pageInfo?.endCursor || null;
 
       if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-        console.error(`[linear-create] Page ${pageCount}: fetched ${nodes.length} issues (total: ${rawIssues.length}, hasNextPage: ${hasNextPage})`);
+        console.error(`[agent2linear] Page ${pageCount}: fetched ${nodes.length} issues (total: ${rawIssues.length}, hasNextPage: ${hasNextPage})`);
       }
 
       // If not fetching all, stop when we have enough
@@ -1164,7 +1164,7 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<IssueLis
     // If not fetching all pages, truncate to target limit
     if (!fetchAll && rawIssues.length > targetLimit) {
       if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-        console.error(`[linear-create] Truncating from ${rawIssues.length} to ${targetLimit} issues`);
+        console.error(`[agent2linear] Truncating from ${rawIssues.length} to ${targetLimit} issues`);
       }
       rawIssues = rawIssues.slice(0, targetLimit);
     }
@@ -1217,7 +1217,7 @@ export async function getAllIssues(filters?: IssueListFilters): Promise<IssueLis
       });
 
       if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-        console.error(`[linear-create] Sorted ${rawIssues.length} issues by ${sortField} ${sortOrder}`);
+        console.error(`[agent2linear] Sorted ${rawIssues.length} issues by ${sortField} ${sortOrder}`);
       }
     }
 
@@ -1328,125 +1328,212 @@ export async function getCurrentUserIssues(): Promise<Array<{
 /**
  * Get full issue details for display (M15.2)
  * Returns comprehensive issue data including relationships, metadata, and dates
+ *
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern (11+ API calls → 1 call)
+ * Fetches all relationships upfront instead of lazy loading via SDK
+ *
  * @param issueId - Issue UUID
  * @returns Full issue data or null if not found
  */
 export async function getFullIssueById(issueId: string): Promise<IssueViewData | null> {
   try {
     const client = getLinearClient();
-    const issue = await client.issue(issueId);
 
-    if (!issue) {
+    // ========================================
+    // CUSTOM GRAPHQL QUERY - ALL RELATIONS UPFRONT
+    // ========================================
+    // This query fetches ALL display data in ONE request to avoid N+1 patterns.
+    // Includes: state, team, assignee, project, cycle, parent, creator
+    // Collections: children (with states!), labels, subscribers
+    const issueQuery = `
+      query GetFullIssue($issueId: String!) {
+        issue(id: $issueId) {
+          id
+          identifier
+          title
+          description
+          url
+          priority
+          estimate
+          dueDate
+          createdAt
+          updatedAt
+          completedAt
+          canceledAt
+          archivedAt
+
+          state {
+            id
+            name
+            type
+            color
+          }
+
+          team {
+            id
+            key
+            name
+          }
+
+          assignee {
+            id
+            name
+            email
+          }
+
+          project {
+            id
+            name
+          }
+
+          cycle {
+            id
+            name
+            number
+          }
+
+          parent {
+            id
+            identifier
+            title
+          }
+
+          children {
+            nodes {
+              id
+              identifier
+              title
+              state {
+                id
+                name
+              }
+            }
+          }
+
+          labels {
+            nodes {
+              id
+              name
+              color
+            }
+          }
+
+          subscribers {
+            nodes {
+              id
+              name
+              email
+            }
+          }
+
+          creator {
+            id
+            name
+            email
+          }
+        }
+      }
+    `;
+
+    const response: any = await client.client.rawRequest(issueQuery, { issueId });
+    const issueData = response.data?.issue;
+
+    if (!issueData) {
       return null;
     }
 
-    // Fetch related data
-    const state = await issue.state;
-    const team = await issue.team;
-    const assignee = await issue.assignee;
-    const project = await issue.project;
-    const cycle = await issue.cycle;
-    const parent = await issue.parent;
-    const children = await issue.children();
-    const labels = await issue.labels();
-    const subscribers = await issue.subscribers();
-    const creator = await issue.creator;
-
+    // Map GraphQL response to IssueViewData (no awaits needed - all data already fetched!)
     return {
       // Core identification
-      id: issue.id,
-      identifier: issue.identifier,
-      title: issue.title,
-      url: issue.url,
+      id: issueData.id,
+      identifier: issueData.identifier,
+      title: issueData.title,
+      url: issueData.url,
 
       // Content
-      description: issue.description || undefined,
+      description: issueData.description || undefined,
 
       // Workflow
-      state: state
+      state: issueData.state
         ? {
-            id: state.id,
-            name: state.name,
-            type: state.type as 'triage' | 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled',
-            color: state.color,
+            id: issueData.state.id,
+            name: issueData.state.name,
+            type: issueData.state.type as 'triage' | 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled',
+            color: issueData.state.color,
           }
         : { id: '', name: 'Unknown', type: 'backlog' as const, color: '#95a2b3' },
-      priority: issue.priority,
-      estimate: issue.estimate || undefined,
+      priority: issueData.priority,
+      estimate: issueData.estimate || undefined,
 
       // Assignment
-      assignee: assignee
+      assignee: issueData.assignee
         ? {
-            id: assignee.id,
-            name: assignee.name,
-            email: assignee.email,
+            id: issueData.assignee.id,
+            name: issueData.assignee.name,
+            email: issueData.assignee.email,
           }
         : undefined,
-      subscribers: subscribers.nodes.map(sub => ({
+      subscribers: issueData.subscribers.nodes.map((sub: any) => ({
         id: sub.id,
         name: sub.name,
         email: sub.email,
       })),
 
       // Organization
-      team: team
+      team: issueData.team
         ? {
-            id: team.id,
-            key: team.key,
-            name: team.name,
+            id: issueData.team.id,
+            key: issueData.team.key,
+            name: issueData.team.name,
           }
         : { id: '', key: '', name: 'Unknown' },
-      project: project
+      project: issueData.project
         ? {
-            id: project.id,
-            name: project.name,
+            id: issueData.project.id,
+            name: issueData.project.name,
           }
         : undefined,
-      cycle: cycle
+      cycle: issueData.cycle
         ? {
-            id: cycle.id,
-            name: cycle.name || `Cycle #${cycle.number}`,
-            number: cycle.number,
+            id: issueData.cycle.id,
+            name: issueData.cycle.name || `Cycle #${issueData.cycle.number}`,
+            number: issueData.cycle.number,
           }
         : undefined,
-      parent: parent
+      parent: issueData.parent
         ? {
-            id: parent.id,
-            identifier: parent.identifier,
-            title: parent.title,
+            id: issueData.parent.id,
+            identifier: issueData.parent.identifier,
+            title: issueData.parent.title,
           }
         : undefined,
-      children: await Promise.all(
-        children.nodes.map(async child => {
-          const childState = await child.state;
-          return {
-            id: child.id,
-            identifier: child.identifier,
-            title: child.title,
-            state: childState?.name || 'Unknown',
-          };
-        })
-      ),
-      labels: labels.nodes.map(label => ({
+      children: issueData.children.nodes.map((child: any) => ({
+        id: child.id,
+        identifier: child.identifier,
+        title: child.title,
+        state: child.state?.name || 'Unknown',
+      })),
+      labels: issueData.labels.nodes.map((label: any) => ({
         id: label.id,
         name: label.name,
         color: label.color,
       })),
 
       // Dates
-      createdAt: issue.createdAt.toISOString(),
-      updatedAt: issue.updatedAt.toISOString(),
-      completedAt: issue.completedAt?.toISOString(),
-      canceledAt: issue.canceledAt?.toISOString(),
-      dueDate: issue.dueDate,
-      archivedAt: issue.archivedAt?.toISOString(),
+      createdAt: issueData.createdAt,
+      updatedAt: issueData.updatedAt,
+      completedAt: issueData.completedAt,
+      canceledAt: issueData.canceledAt,
+      dueDate: issueData.dueDate,
+      archivedAt: issueData.archivedAt,
 
       // Creator
-      creator: creator
+      creator: issueData.creator
         ? {
-            id: creator.id,
-            name: creator.name,
-            email: creator.email,
+            id: issueData.creator.id,
+            name: issueData.creator.name,
+            email: issueData.creator.email,
           }
         : { id: '', name: 'Unknown', email: '' },
     };
@@ -1457,6 +1544,11 @@ export async function getFullIssueById(issueId: string): Promise<IssueViewData |
 
 /**
  * Get issue comments (M15.2)
+ *
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern (2 + N API calls → 1 call)
+ * Fetches all comment users upfront instead of lazy loading via SDK
+ *
  * @param issueId - Issue UUID
  * @returns Array of comments
  */
@@ -1475,32 +1567,49 @@ export async function getIssueComments(issueId: string): Promise<
 > {
   try {
     const client = getLinearClient();
-    const issue = await client.issue(issueId);
 
-    if (!issue) {
+    // Custom GraphQL query - fetch comments with user data in one request
+    const commentsQuery = `
+      query GetIssueComments($issueId: String!) {
+        issue(id: $issueId) {
+          id
+          comments {
+            nodes {
+              id
+              body
+              createdAt
+              updatedAt
+              user {
+                id
+                name
+                email
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response: any = await client.client.rawRequest(commentsQuery, { issueId });
+    const issueData = response.data?.issue;
+
+    if (!issueData || !issueData.comments) {
       return [];
     }
 
-    const comments = await issue.comments();
-
-    return await Promise.all(
-      comments.nodes.map(async comment => {
-        const user = await comment.user;
-        return {
-          id: comment.id,
-          body: comment.body,
-          createdAt: comment.createdAt.toISOString(),
-          updatedAt: comment.updatedAt.toISOString(),
-          user: user
-            ? {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-              }
-            : { id: '', name: 'Unknown', email: '' },
-        };
-      })
-    );
+    return issueData.comments.nodes.map((comment: any) => ({
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      user: comment.user
+        ? {
+            id: comment.user.id,
+            name: comment.user.name,
+            email: comment.user.email,
+          }
+        : { id: '', name: 'Unknown', email: '' },
+    }));
   } catch (error) {
     return [];
   }
@@ -1508,6 +1617,12 @@ export async function getIssueComments(issueId: string): Promise<
 
 /**
  * Get issue history (M15.2)
+ *
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern (2 + 7N API calls → 1 call)
+ * Fetches all history relationships upfront instead of lazy loading via SDK
+ * Previous: 7 awaits per entry (actor, fromState, toState, fromAssignee, toAssignee, addedLabels, removedLabels)
+ *
  * @param issueId - Issue UUID
  * @returns Array of history entries
  */
@@ -1530,43 +1645,75 @@ export async function getIssueHistory(issueId: string): Promise<
 > {
   try {
     const client = getLinearClient();
-    const issue = await client.issue(issueId);
 
-    if (!issue) {
+    // Custom GraphQL query - fetch history with all relationships in one request
+    const historyQuery = `
+      query GetIssueHistory($issueId: String!) {
+        issue(id: $issueId) {
+          id
+          history {
+            nodes {
+              id
+              createdAt
+              actor {
+                id
+                name
+                email
+              }
+              fromState {
+                id
+                name
+              }
+              toState {
+                id
+                name
+              }
+              fromAssignee {
+                id
+                name
+              }
+              toAssignee {
+                id
+                name
+              }
+              addedLabels {
+                id
+                name
+              }
+              removedLabels {
+                id
+                name
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response: any = await client.client.rawRequest(historyQuery, { issueId });
+    const issueData = response.data?.issue;
+
+    if (!issueData || !issueData.history) {
       return [];
     }
 
-    const history = await issue.history();
-
-    return await Promise.all(
-      history.nodes.map(async entry => {
-        const actor = await entry.actor;
-        const fromState = await entry.fromState;
-        const toState = await entry.toState;
-        const fromAssignee = await entry.fromAssignee;
-        const toAssignee = await entry.toAssignee;
-        const addedLabels = await entry.addedLabels;
-        const removedLabels = await entry.removedLabels;
-
-        return {
-          id: entry.id,
-          createdAt: entry.createdAt.toISOString(),
-          actor: actor
-            ? {
-                id: actor.id,
-                name: actor.name,
-                email: actor.email,
-              }
-            : undefined,
-          fromState: fromState?.name,
-          toState: toState?.name,
-          fromAssignee: fromAssignee?.name,
-          toAssignee: toAssignee?.name,
-          addedLabels: addedLabels ? addedLabels.map(l => l.name) : undefined,
-          removedLabels: removedLabels ? removedLabels.map(l => l.name) : undefined,
-        };
-      })
-    );
+    return issueData.history.nodes.map((entry: any) => ({
+      id: entry.id,
+      createdAt: entry.createdAt,
+      actor: entry.actor
+        ? {
+            id: entry.actor.id,
+            name: entry.actor.name,
+            email: entry.actor.email,
+          }
+        : undefined,
+      fromState: entry.fromState?.name,
+      toState: entry.toState?.name,
+      fromAssignee: entry.fromAssignee?.name,
+      toAssignee: entry.toAssignee?.name,
+      addedLabels: entry.addedLabels ? entry.addedLabels.map((l: any) => l.name) : undefined,
+      removedLabels: entry.removedLabels ? entry.removedLabels.map((l: any) => l.name) : undefined,
+    }));
   } catch (error) {
     return [];
   }
@@ -1660,7 +1807,7 @@ export async function getAllProjects(filters?: ProjectListFilters): Promise<Proj
     }
 
     if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-      console.error('[linear-create] Project filter:', JSON.stringify(graphqlFilter, null, 2));
+      console.error('[agent2linear] Project filter:', JSON.stringify(graphqlFilter, null, 2));
     }
 
     // Determine what data needs to be fetched based on filters
@@ -1674,7 +1821,7 @@ export async function getAllProjects(filters?: ProjectListFilters): Promise<Proj
     const needsAdditionalData = needsLabels || needsMembers;
 
     if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-      console.error('[linear-create] Conditional fetch:', { needsLabels, needsMembers, needsAdditionalData });
+      console.error('[agent2linear] Conditional fetch:', { needsLabels, needsMembers, needsAdditionalData });
     }
 
     // ========================================
@@ -1688,7 +1835,7 @@ export async function getAllProjects(filters?: ProjectListFilters): Promise<Proj
     const targetLimit = filters?.limit || 50;
 
     if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-      console.error('[linear-create] Pagination:', { pageSize, fetchAll, targetLimit });
+      console.error('[agent2linear] Pagination:', { pageSize, fetchAll, targetLimit });
     }
 
     // QUERY 1: Minimal - Always fetch core project data (projects, teams, leads)
@@ -1780,7 +1927,7 @@ ${relationsFragment}
       cursor = pageInfo?.endCursor || null;
 
       if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-        console.error(`[linear-create] Page ${pageCount}: fetched ${nodes.length} projects (total: ${rawProjects.length}, hasNextPage: ${hasNextPage})`);
+        console.error(`[agent2linear] Page ${pageCount}: fetched ${nodes.length} projects (total: ${rawProjects.length}, hasNextPage: ${hasNextPage})`);
       }
 
       // If not fetching all, stop when we have enough
@@ -1845,7 +1992,7 @@ ${relationsFragment}
       const batchResponse: any = await client.client.rawRequest(batchQuery, {});
 
       if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-        console.error('[linear-create] Batch query fetched labels+members for', projectIds.length, 'projects');
+        console.error('[agent2linear] Batch query fetched labels+members for', projectIds.length, 'projects');
       }
 
       // Parse batch response and build maps for in-code join
@@ -1866,7 +2013,7 @@ ${relationsFragment}
     // If not fetching all pages, truncate to target limit
     if (!fetchAll && rawProjects.length > targetLimit) {
       if (process.env.LINEAR_CREATE_DEBUG_FILTERS === '1') {
-        console.error(`[linear-create] Truncating from ${rawProjects.length} to ${targetLimit} projects`);
+        console.error(`[agent2linear] Truncating from ${rawProjects.length} to ${targetLimit} projects`);
       }
       rawProjects = rawProjects.slice(0, targetLimit);
     }
@@ -2371,49 +2518,65 @@ export async function updateProject(
 
 /**
  * Get a single project by ID
+ *
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern (3 API calls → 1 call)
+ * Fetches project with initiatives and teams upfront instead of lazy loading via SDK
  */
 export async function getProjectById(
   projectId: string
 ): Promise<ProjectResult | null> {
   try {
     const client = getLinearClient();
-    const project = await client.project(projectId);
+
+    // Custom GraphQL query - fetch project with initiatives and teams in one request
+    const projectQuery = `
+      query GetProject($projectId: String!) {
+        project(id: $projectId) {
+          id
+          name
+          url
+          state
+
+          initiatives {
+            nodes {
+              id
+              name
+            }
+          }
+
+          teams {
+            nodes {
+              id
+              name
+            }
+          }
+        }
+      }
+    `;
+
+    const response: any = await client.client.rawRequest(projectQuery, { projectId });
+    const project = response.data?.project;
 
     if (!project) {
       return null;
     }
 
-    // Fetch initiative details if linked
-    let initiative;
-    try {
-      const projectInitiatives = await project.initiatives();
-      const initiativesList = await projectInitiatives.nodes;
-      if (initiativesList && initiativesList.length > 0) {
-        const firstInitiative = initiativesList[0];
-        initiative = {
-          id: firstInitiative.id,
-          name: firstInitiative.name,
-        };
-      }
-    } catch {
-      // Initiative fetch failed or not linked
-    }
+    // Get first initiative if exists
+    const initiative = project.initiatives?.nodes?.[0]
+      ? {
+          id: project.initiatives.nodes[0].id,
+          name: project.initiatives.nodes[0].name,
+        }
+      : undefined;
 
-    // Fetch team details if set
-    let team;
-    try {
-      const teams = await project.teams();
-      const teamsList = await teams.nodes;
-      if (teamsList && teamsList.length > 0) {
-        const firstTeam = teamsList[0];
-        team = {
-          id: firstTeam.id,
-          name: firstTeam.name,
-        };
-      }
-    } catch {
-      // Team fetch failed or not set
-    }
+    // Get first team if exists
+    const team = project.teams?.nodes?.[0]
+      ? {
+          id: project.teams.nodes[0].id,
+          name: project.teams.nodes[0].name,
+        }
+      : undefined;
 
     return {
       id: project.id,
@@ -2504,6 +2667,139 @@ export async function getProjectDetails(projectId: string): Promise<{
 
     return {
       project: projectResult,
+      lastAppliedTemplate,
+      milestones,
+      issues,
+    };
+  } catch (error) {
+    if (error instanceof LinearClientError) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to fetch project details: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Get full project details with all relationships (OPTIMIZED)
+ *
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern (~10 API calls → 1 call)
+ * Fetches all project data upfront instead of lazy loading via SDK
+ *
+ * @param projectId - Project UUID
+ * @returns Complete project details or null if not found
+ */
+export async function getFullProjectDetails(projectId: string): Promise<{
+  project: ProjectResult;
+  lastAppliedTemplate?: { id: string; name: string };
+  milestones: Array<{ id: string; name: string }>;
+  issues: Array<{ id: string; identifier: string; title: string }>;
+} | null> {
+  try {
+    const client = getLinearClient();
+
+    // ========================================
+    // CUSTOM GRAPHQL QUERY - ALL RELATIONS UPFRONT
+    // ========================================
+    // This query fetches ALL project data in ONE request to avoid N+1 patterns.
+    // Includes: basic info, initiatives, teams, template, milestones, issues
+    const projectQuery = `
+      query GetFullProject($projectId: String!) {
+        project(id: $projectId) {
+          id
+          name
+          url
+          state
+
+          initiatives {
+            nodes {
+              id
+              name
+            }
+          }
+
+          teams {
+            nodes {
+              id
+              name
+            }
+          }
+
+          lastAppliedTemplate {
+            id
+            name
+          }
+
+          projectMilestones {
+            nodes {
+              id
+              name
+            }
+          }
+
+          issues {
+            nodes {
+              id
+              identifier
+              title
+            }
+          }
+        }
+      }
+    `;
+
+    const response: any = await client.client.rawRequest(projectQuery, { projectId });
+    const projectData = response.data?.project;
+
+    if (!projectData) {
+      return null;
+    }
+
+    // Map GraphQL response to ProjectResult and related data (no awaits needed!)
+    const initiative = projectData.initiatives?.nodes?.[0]
+      ? {
+          id: projectData.initiatives.nodes[0].id,
+          name: projectData.initiatives.nodes[0].name,
+        }
+      : undefined;
+
+    const team = projectData.teams?.nodes?.[0]
+      ? {
+          id: projectData.teams.nodes[0].id,
+          name: projectData.teams.nodes[0].name,
+        }
+      : undefined;
+
+    const lastAppliedTemplate = projectData.lastAppliedTemplate
+      ? {
+          id: projectData.lastAppliedTemplate.id,
+          name: projectData.lastAppliedTemplate.name,
+        }
+      : undefined;
+
+    const milestones = (projectData.projectMilestones?.nodes || []).map((milestone: any) => ({
+      id: milestone.id,
+      name: milestone.name,
+    }));
+
+    const issues = (projectData.issues?.nodes || []).map((issue: any) => ({
+      id: issue.id,
+      identifier: issue.identifier,
+      title: issue.title,
+    }));
+
+    return {
+      project: {
+        id: projectData.id,
+        name: projectData.name,
+        url: projectData.url,
+        state: projectData.state,
+        initiative,
+        team,
+      },
       lastAppliedTemplate,
       milestones,
       issues,
@@ -2836,13 +3132,19 @@ export interface WorkflowStateUpdateInput {
 /**
  * Get all workflow states for a team (or all teams)
  */
+/**
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern when fetching all workflow states
+ * Previous: 1 + N API calls (1 for teams + N for states per team)
+ * Optimized: 1 API call with nested states data
+ */
 export async function getAllWorkflowStates(teamId?: string): Promise<import('./types.js').WorkflowState[]> {
   try {
     const client = getLinearClient();
     const result: import('./types.js').WorkflowState[] = [];
 
     if (teamId) {
-      // Get workflow states for a specific team
+      // Get workflow states for a specific team (already efficient - 2 calls)
       const team = await client.team(teamId);
       if (!team) {
         throw new Error(`Team not found: ${teamId}`);
@@ -2861,11 +3163,32 @@ export async function getAllWorkflowStates(teamId?: string): Promise<import('./t
         });
       }
     } else {
-      // Get workflow states for all teams
-      const teams = await client.teams();
-      for (const team of teams.nodes) {
-        const states = await team.states();
-        for (const state of states.nodes) {
+      // Get workflow states for all teams - OPTIMIZED with custom GraphQL
+      const statesQuery = `
+        query GetAllWorkflowStates {
+          teams {
+            nodes {
+              id
+              states {
+                nodes {
+                  id
+                  name
+                  type
+                  color
+                  description
+                  position
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const response: any = await client.client.rawRequest(statesQuery);
+      const teamsData = response.data?.teams?.nodes || [];
+
+      for (const team of teamsData) {
+        for (const state of team.states.nodes) {
           result.push({
             id: state.id,
             name: state.name,
@@ -3052,13 +3375,19 @@ export interface IssueLabelUpdateInput {
 /**
  * Get all issue labels (workspace-level and/or team-level)
  */
+/**
+ * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
+ * Uses custom GraphQL query to avoid N+1 pattern when fetching all labels
+ * Previous: 1 + N API calls (1 for labels + N for teams)
+ * Optimized: 1 API call with nested team data
+ */
 export async function getAllIssueLabels(teamId?: string): Promise<import('./types.js').IssueLabel[]> {
   try {
     const client = getLinearClient();
     const result: import('./types.js').IssueLabel[] = [];
 
     if (teamId) {
-      // Get labels for a specific team
+      // Get labels for a specific team (already efficient - 2 calls)
       const team = await client.team(teamId);
       if (!team) {
         throw new Error(`Team not found: ${teamId}`);
@@ -3075,16 +3404,33 @@ export async function getAllIssueLabels(teamId?: string): Promise<import('./type
         });
       }
     } else {
-      // Get all labels (workspace + all teams)
-      const labels = await client.issueLabels();
-      for (const label of labels.nodes) {
-        const team = await label.team;
+      // Get all labels (workspace + all teams) - OPTIMIZED with custom GraphQL
+      const labelsQuery = `
+        query GetAllIssueLabels {
+          issueLabels {
+            nodes {
+              id
+              name
+              color
+              description
+              team {
+                id
+              }
+            }
+          }
+        }
+      `;
+
+      const response: any = await client.client.rawRequest(labelsQuery);
+      const labelsData = response.data?.issueLabels?.nodes || [];
+
+      for (const label of labelsData) {
         result.push({
           id: label.id,
           name: label.name,
           color: label.color,
           description: label.description || undefined,
-          teamId: team?.id,
+          teamId: label.team?.id,
         });
       }
     }

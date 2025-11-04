@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Comprehensive Test Suite for: linear-create project create
+# Comprehensive Test Suite for: agent2linear project create
 #
 # This script tests all permutations and combinations of the project create command
 # including aliases, multi-value fields, content handling, and error cases.
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one team in your Linear workspace
 #
 # Usage:
@@ -508,6 +508,47 @@ run_test \
 run_test \
     "Dates: Both with resolutions" \
     "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Both' --team $TEST_TEAM_ID --start-date 2025-01-01 --start-date-resolution quarter --target-date 2025-12-31 --target-date-resolution year"
+
+# M22 Phase 6: Flexible Date Format Tests
+run_test \
+    "Dates: Quarter format (2025-Q1)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Q1' --team $TEST_TEAM_ID --start-date 2025-Q1"
+
+run_test \
+    "Dates: Quarter format with space (Q2 2025)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Q2_Space' --team $TEST_TEAM_ID --start-date 'Q2 2025'"
+
+run_test \
+    "Dates: Half-year format (2025-H1)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_H1' --team $TEST_TEAM_ID --start-date 2025-H1"
+
+run_test \
+    "Dates: Half-year format with space (H2 2025)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_H2_Space' --team $TEST_TEAM_ID --target-date 'H2 2025'"
+
+run_test \
+    "Dates: Month numeric format (2025-01)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Month_Numeric' --team $TEST_TEAM_ID --start-date 2025-01"
+
+run_test \
+    "Dates: Month short name (Jan 2025)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Jan' --team $TEST_TEAM_ID --start-date 'Jan 2025'"
+
+run_test \
+    "Dates: Month full name (January 2025)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_January' --team $TEST_TEAM_ID --start-date 'January 2025'"
+
+run_test \
+    "Dates: Year format (2025)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Year' --team $TEST_TEAM_ID --start-date 2025"
+
+run_test \
+    "Dates: Quarter start and target (Q1 2025, Q4 2025)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Q1_Q4' --team $TEST_TEAM_ID --start-date 'Q1 2025' --target-date 'Q4 2025'"
+
+run_test \
+    "Dates: Mixed formats (Jan 2025 start, 2025-12-31 target)" \
+    "$CLI_CMD project create --title '${TEST_PREFIX}_Date_Mixed' --team $TEST_TEAM_ID --start-date 'Jan 2025' --target-date 2025-12-31"
 
 run_test \
     "Priority: Level 0 (None)" \

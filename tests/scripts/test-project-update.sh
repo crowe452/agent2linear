@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Comprehensive Test Suite for: linear-create project update
+# Comprehensive Test Suite for: agent2linear project update
 #
 # This script tests all permutations and combinations of the project update command
 # including project resolution (name/ID/alias), field updates, and error cases.
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one team in your Linear workspace
 #   - This script will create test projects to update
 #
@@ -501,6 +501,39 @@ run_test \
     "Single Field: Target date only" \
     "$CLI_CMD project update '$PROJ_DATES' --target-date 2025-06-30"
 
+# M22 Phase 6: Flexible Date Format Tests
+run_test \
+    "Dates: Quarter format (2025-Q1)" \
+    "$CLI_CMD project update '$PROJ_BY_ID' --start-date 2025-Q1"
+
+run_test \
+    "Dates: Quarter with space (Q3 2025)" \
+    "$CLI_CMD project update '$PROJ_BY_NAME' --start-date 'Q3 2025'"
+
+run_test \
+    "Dates: Half-year format (2025-H2)" \
+    "$CLI_CMD project update '$PROJ_DATES' --target-date 2025-H2"
+
+run_test \
+    "Dates: Month numeric (2025-06)" \
+    "$CLI_CMD project update '$PROJ_PRIORITY' --start-date 2025-06"
+
+run_test \
+    "Dates: Month short name (Jun 2025)" \
+    "$CLI_CMD project update '$PROJ_STATUS' --start-date 'Jun 2025'"
+
+run_test \
+    "Dates: Month full name (December 2025)" \
+    "$CLI_CMD project update '$PROJ_MULTI1' --target-date 'December 2025'"
+
+run_test \
+    "Dates: Year format (2026)" \
+    "$CLI_CMD project update '$PROJ_MULTI2' --start-date 2026"
+
+run_test \
+    "Dates: Both dates with flexible formats (Q2 2025, Dec 2025)" \
+    "$CLI_CMD project update '$PROJ_MULTI3' --start-date 'Q2 2025' --target-date 'Dec 2025'"
+
 # ============================================================
 # SUCCESS TESTS - CONTENT UPDATES
 # ============================================================
@@ -616,7 +649,7 @@ run_test \
 # Icon tests (no client-side validation per M14.6)
 run_test \
     "M15: Update icon - emoji" \
-    "$CLI_CMD project update '$PROJ_STATUS' --icon '🚀'"
+    "$CLI_CMD project update '$PROJ_STATUS' --icon 'Tree'"
 
 run_test \
     "M15: Update icon - name" \
@@ -729,7 +762,7 @@ echo ""
 
 run_test \
     "M15 Combo: Color + Icon" \
-    "$CLI_CMD project update '$PROJ_BY_NAME' --color '#FF6B6B' --icon '🎨'"
+    "$CLI_CMD project update '$PROJ_BY_NAME' --color '#FF6B6B' --icon 'Checklist'"
 
 run_test \
     "M15 Combo: Color + Icon + Date Resolutions" \
@@ -774,7 +807,58 @@ run_test \
     "true"
 
 # Note: Lead/Members not found errors would require actual invalid IDs
-# These are better tested manually or with fixture data
+# These are better tested manual ly or with fixture data
+
+# ============================================================
+# M16 - LINK MANAGEMENT TESTS
+# ============================================================
+
+echo "=========================================="
+echo "CATEGORY: M16 - Link Management"
+echo "=========================================="
+echo ""
+
+# Setup: Create a project for link testing
+PROJ_LINKS="${TEST_PREFIX}_Links"
+$CLI_CMD project create --title "$PROJ_LINKS" --team "$TEST_TEAM_ID" --description "Testing link management"
+PROJECTS_CREATED+=("$PROJ_LINKS")
+PROJECT_NAMES+=("$PROJ_LINKS")
+
+run_test \
+    "M16: Add single link (URL only)" \
+    "$CLI_CMD project update '$PROJ_LINKS' --link 'https://example.com'"
+
+run_test \
+    "M16: Add link with label" \
+    "$CLI_CMD project update '$PROJ_LINKS' --link 'https://github.com/org/repo|GitHub Repository'"
+
+run_test \
+    "M16: Add multiple links (repeatable flag)" \
+    "$CLI_CMD project update '$PROJ_LINKS' --link 'https://docs.example.com|Documentation' --link 'https://api.example.com|API Reference'"
+
+run_test \
+    "M16: Remove link by exact URL" \
+    "$CLI_CMD project update '$PROJ_LINKS' --remove-link 'https://example.com'"
+
+run_test \
+    "M16: Remove non-existent link (should warn, not error)" \
+    "$CLI_CMD project update '$PROJ_LINKS' --remove-link 'https://does-not-exist.com'"
+
+run_test \
+    "M16: Add and remove in same command" \
+    "$CLI_CMD project update '$PROJ_LINKS' --link 'https://new-resource.com|New Resource' --remove-link 'https://docs.example.com'"
+
+run_test \
+    "M16: Combine link operations with field updates" \
+    "$CLI_CMD project update '$PROJ_LINKS' --priority 1 --color '#FF0000' --link 'https://urgent-link.com|Urgent'"
+
+run_test \
+    "M16: Link-only update (no other fields)" \
+    "$CLI_CMD project update '$PROJ_LINKS' --link 'https://standalone.com|Standalone Link'"
+
+run_test \
+    "M16: Remove multiple links (repeatable flag)" \
+    "$CLI_CMD project update '$PROJ_LINKS' --remove-link 'https://api.example.com' --remove-link 'https://github.com/org/repo'"
 
 # ============================================================
 # ERROR TESTS - VALIDATION

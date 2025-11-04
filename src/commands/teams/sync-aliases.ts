@@ -31,11 +31,11 @@ export function syncTeamAliases(program: Command) {
     .option('-f, --force', 'Overwrite existing aliases')
     .addHelpText('after', `
 Examples:
-  $ linear-create teams sync-aliases           # Preview aliases
-  $ linear-create team sync-aliases --global   # Create global aliases
-  $ linear-create teams sync-aliases --project # Create project-local aliases
-  $ linear-create teams sync-aliases --dry-run # Preview changes
-  $ linear-create team sync-aliases --force    # Force override existing
+  $ agent2linear teams sync-aliases           # Preview aliases
+  $ agent2linear team sync-aliases --global   # Create global aliases
+  $ agent2linear teams sync-aliases --project # Create project-local aliases
+  $ agent2linear teams sync-aliases --dry-run # Preview changes
+  $ agent2linear team sync-aliases --force    # Force override existing
 
 This command will create aliases for all teams in your workspace,
 using the team name converted to lowercase with hyphens (e.g., "Engineering Team" → "engineering-team").

@@ -14,7 +14,7 @@ export function getAliasCommand(type: string, alias: string) {
 
     if (!result.found) {
       console.error(`❌ Alias "${alias}" not found for ${normalizedType}`);
-      console.log(`\n💡 Use 'linear-create alias list ${normalizedType}' to see available aliases\n`);
+      console.log(`\n💡 Use 'agent2linear alias list ${normalizedType}' to see available aliases\n`);
       process.exit(1);
     }
 

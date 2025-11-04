@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import { getWorkflowStateById, updateWorkflowState } from '../../lib/linear-client.js';
 import { resolveAlias } from '../../lib/aliases.js';
-import { isValidHexColor, normalizeHexColor } from '../../lib/colors.js';
 
 export function updateWorkflowStateCommand(program: Command) {
   program
@@ -33,31 +32,39 @@ export function updateWorkflowStateCommand(program: Command) {
         const currentState = await getWorkflowStateById(resolvedId);
 
         if (!currentState) {
-          console.error(`❌ Workflow state not found: ${id}`);
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('workflow state', id, 'workflow-states list'));
           process.exit(1);
         }
 
         // Validate inputs
+        const { validateAndNormalizeColor, validateEnumValue } = await import('../../lib/validators.js');
+
         if (options.type) {
           const validTypes = ['triage', 'backlog', 'unstarted', 'started', 'completed', 'canceled'];
-          if (!validTypes.includes(options.type)) {
-            console.error(`❌ Error: Invalid type: ${options.type}`);
-            console.log(`Type must be one of: ${validTypes.join(', ')}`);
+          const typeResult = validateEnumValue(options.type, validTypes, 'type');
+          if (!typeResult.valid) {
+            console.error(`❌ Error: ${typeResult.error}`);
             process.exit(1);
           }
         }
 
-        if (options.color && !isValidHexColor(options.color)) {
-          console.error(`❌ Error: Invalid color format: ${options.color}`);
-          console.log('Color must be a valid hex code (e.g., #5E6AD2 or 5E6AD2)');
-          process.exit(1);
+        if (options.color) {
+          const colorResult = validateAndNormalizeColor(options.color);
+          if (!colorResult.valid) {
+            console.error(`❌ Error: ${colorResult.error}`);
+            process.exit(1);
+          }
         }
 
         // Build update input
         const updateInput: { name?: string; type?: 'triage' | 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled'; color?: string; description?: string; position?: number } = {};
         if (options.name) updateInput.name = options.name;
         if (options.type) updateInput.type = options.type as 'triage' | 'backlog' | 'unstarted' | 'started' | 'completed' | 'canceled';
-        if (options.color) updateInput.color = normalizeHexColor(options.color);
+        if (options.color) {
+          const colorResult = validateAndNormalizeColor(options.color);
+          updateInput.color = colorResult.value!;
+        }
         if (options.description !== undefined) updateInput.description = options.description;
         if (options.position !== undefined) updateInput.position = parseInt(options.position, 10);
 

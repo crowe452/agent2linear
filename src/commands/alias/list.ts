@@ -86,7 +86,7 @@ export async function listAliasCommand(type?: string, options: ListAliasOptions 
           console.log('');
         }
         console.log(
-          `💡 Use 'linear-create alias remove <type> <alias>' to remove broken aliases\n`
+          `💡 Use 'agent2linear alias remove <type> <alias>' to remove broken aliases\n`
         );
       }
       return;
@@ -116,7 +116,7 @@ export async function listAliasCommand(type?: string, options: ListAliasOptions 
     if (!hasGlobalAliases() && !hasProjectAliases()) {
       console.log('No aliases configured yet.\n');
       console.log('💡 Add an alias with:');
-      console.log('   linear-create alias add <type> <alias> <id>\n');
+      console.log('   agent2linear alias add <type> <alias> <id>\n');
       return;
     }
 
@@ -281,7 +281,7 @@ async function displayAllAliases(fullAliases: ResolvedAliases, canValidate: bool
   if (totalCount === 0) {
     console.log('No aliases configured yet.\n');
     console.log('💡 Add an alias with:');
-    console.log('   linear-create alias add <type> <alias> <id>\n');
+    console.log('   agent2linear alias add <type> <alias> <id>\n');
   } else {
     console.log(`Total: ${totalCount} alias(es)\n`);
     if (!canValidate) {

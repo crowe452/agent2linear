@@ -5,7 +5,10 @@ import {
   clearInitiativesCache,
   clearMembersCache,
   clearTemplatesCache,
-  clearStatusCache
+  clearStatusCache,
+  clearWorkflowStatesCache,
+  clearIssueLabelsCache,
+  clearProjectLabelsCache
 } from '../../lib/status-cache.js';
 
 /**
@@ -16,9 +19,8 @@ export async function clearCache(options?: { entity?: string }) {
 
   if (options?.entity) {
     // Clear specific entity type
-    // Note: Only entities with persistent cache support are included
-    // issue-labels and project-labels will be added when persistent cache is implemented (M12)
-    const validEntities = ['teams', 'initiatives', 'members', 'templates', 'statuses'];
+    // All entity types with persistent cache support are included
+    const validEntities = ['teams', 'initiatives', 'members', 'templates', 'statuses', 'workflow-states', 'issue-labels', 'project-labels'];
 
     if (!validEntities.includes(options.entity)) {
       console.error(`❌ Invalid entity type: ${options.entity}`);
@@ -48,6 +50,15 @@ export async function clearCache(options?: { entity?: string }) {
       case 'statuses':
         clearStatusCache();
         break;
+      case 'workflow-states':
+        clearWorkflowStatesCache();
+        break;
+      case 'issue-labels':
+        clearIssueLabelsCache();
+        break;
+      case 'project-labels':
+        clearProjectLabelsCache();
+        break;
     }
 
     console.log('✅ Cache cleared successfully (session + persistent)');
@@ -65,5 +76,5 @@ export async function clearCache(options?: { entity?: string }) {
   }
 
   console.log('\n💡 Cache will be repopulated on next access');
-  console.log('💡 Use "linear-create cache stats" to view cache status\n');
+  console.log('💡 Use "agent2linear cache stats" to view cache status\n');
 }

@@ -1,4 +1,4 @@
-import { getProjectDetails } from '../../lib/linear-client.js';
+import { getFullProjectDetails } from '../../lib/linear-client.js';
 import { resolveProject } from '../../lib/project-resolver.js';
 import { showResolvedAlias, showEntityNotFound } from '../../lib/output.js';
 import { openInBrowser } from '../../lib/browser.js';
@@ -34,7 +34,7 @@ export async function viewProject(nameOrId: string, options: { web?: boolean; au
   try {
     console.log(`\n🔍 Fetching project details...\n`);
 
-    const details = await getProjectDetails(resolvedId);
+    const details = await getFullProjectDetails(resolvedId);
 
     if (!details) {
       showEntityNotFound('project', resolvedId);

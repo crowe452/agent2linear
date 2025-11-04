@@ -7,8 +7,8 @@ export async function viewMilestoneTemplate(templateName: string) {
     const result = getMilestoneTemplate(templateName);
 
     if (!result) {
-      console.error(`❌ Milestone template not found: ${templateName}`);
-      console.error('   Use "linear-create milestone-templates list" to see available templates');
+      const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+      console.error(formatEntityNotFoundError('milestone template', templateName, 'milestone-templates list'));
       process.exit(1);
     }
 
@@ -34,10 +34,10 @@ export async function viewMilestoneTemplate(templateName: string) {
 
     console.log('');
     console.log('💡 Use this template:');
-    console.log(`   $ linear-create project add-milestones <project-id> --template ${templateName}`);
+    console.log(`   $ agent2linear project add-milestones <project-id> --template ${templateName}`);
     console.log('');
     console.log('   Set as default:');
-    console.log(`   $ linear-create config set defaultMilestoneTemplate ${templateName}`);
+    console.log(`   $ agent2linear config set defaultMilestoneTemplate ${templateName}`);
     console.log('');
   } catch (error) {
     console.error(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

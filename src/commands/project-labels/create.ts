@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { createProjectLabel } from '../../lib/linear-client.js';
-import { isValidHexColor, normalizeHexColor } from '../../lib/colors.js';
 
 export function createProjectLabelCommand(program: Command) {
   program
@@ -16,14 +15,16 @@ export function createProjectLabelCommand(program: Command) {
           process.exit(1);
         }
 
-        if (!isValidHexColor(options.color)) {
-          console.error(`❌ Error: Invalid color format: ${options.color}`);
+        const { validateAndNormalizeColor } = await import('../../lib/validators.js');
+        const colorResult = validateAndNormalizeColor(options.color);
+        if (!colorResult.valid) {
+          console.error(`❌ Error: ${colorResult.error}`);
           process.exit(1);
         }
 
         const label = await createProjectLabel({
           name: options.name,
-          color: normalizeHexColor(options.color),
+          color: colorResult.value!,
           description: options.description,
         });
 

@@ -9,7 +9,7 @@ interface IconsListProps {
   format?: string;
 }
 
-function IconsList({ search, category, format }: IconsListProps) {
+function IconsList({ search, category, format: _format }: IconsListProps) {
   const icons = search ? searchIcons(search) : category ? getIconsByCategory(category) : CURATED_ICONS;
 
   if (icons.length === 0) {

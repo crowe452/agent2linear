@@ -3,9 +3,9 @@ import { homedir } from 'os';
 import { join } from 'path';
 import type { MilestoneTemplates, MilestoneTemplate, MilestoneDefinition } from './types.js';
 
-const GLOBAL_TEMPLATES_DIR = join(homedir(), '.config', 'linear-create');
+const GLOBAL_TEMPLATES_DIR = join(homedir(), '.config', 'agent2linear');
 const GLOBAL_TEMPLATES_FILE = join(GLOBAL_TEMPLATES_DIR, 'milestone-templates.json');
-const PROJECT_TEMPLATES_DIR = '.linear-create';
+const PROJECT_TEMPLATES_DIR = '.agent2linear';
 const PROJECT_TEMPLATES_FILE = join(PROJECT_TEMPLATES_DIR, 'milestone-templates.json');
 
 /**

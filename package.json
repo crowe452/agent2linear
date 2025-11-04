@@ -1,12 +1,19 @@
 {
-  "name": "linear-create",
+  "name": "agent2linear",
   "version": "0.24.0",
   "description": "Command-line tool for creating Linear issues and projects",
   "main": "dist/index.js",
   "bin": {
-    "linear-create": "dist/index.js"
+    "agent2linear": "dist/index.js",
+    "a2l": "dist/index.js"
   },
   "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "turbo run build:task",
     "build:task": "tsup",
@@ -21,16 +28,30 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm run build"
   },
   "keywords": [
     "linear",
     "cli",
     "project-management",
-    "issue-tracking"
+    "issue-tracking",
+    "linear-app",
+    "linear-cli",
+    "agent",
+    "automation",
+    "ai-agents"
   ],
   "author": "Steve Morin",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smorin/agent2linear.git"
+  },
+  "homepage": "https://github.com/smorin/agent2linear#readme",
+  "bugs": {
+    "url": "https://github.com/smorin/agent2linear/issues"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",

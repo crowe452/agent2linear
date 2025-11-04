@@ -1,5 +1,5 @@
 /**
- * Unified in-memory entity cache for linear-create CLI
+ * Unified in-memory entity cache for agent2linear CLI
  *
  * This module provides session-scoped caching for frequently accessed entities
  * (teams, initiatives, members, templates, labels) to reduce API calls.
@@ -18,11 +18,21 @@ import {
   getAllInitiatives,
   getAllMembers,
   getAllTemplates,
+  getCurrentUser as getLinearCurrentUser,
   Team,
   Initiative,
   Member,
   Template
 } from './linear-client.js';
+
+/**
+ * Current user type
+ */
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
 import { IssueLabel, ProjectLabel } from './types.js';
 import {
   getCachedTeams,
@@ -46,7 +56,7 @@ interface CachedEntity<T> {
 /**
  * Entity type for cache operations
  */
-export type CacheableEntityType = 'teams' | 'initiatives' | 'members' | 'templates' | 'issue-labels' | 'project-labels';
+export type CacheableEntityType = 'user' | 'teams' | 'initiatives' | 'members' | 'templates' | 'issue-labels' | 'project-labels';
 
 /**
  * Unified entity cache class
@@ -55,6 +65,7 @@ export type CacheableEntityType = 'teams' | 'initiatives' | 'members' | 'templat
  * Singleton pattern ensures single cache instance per session.
  */
 export class EntityCache {
+  private user?: CachedEntity<User>;
   private teams?: CachedEntity<Team>;
   private initiatives?: CachedEntity<Initiative>;
   private members?: CachedEntity<Member>;
@@ -93,6 +104,34 @@ export class EntityCache {
     const ttl = this.getCacheTTL();
 
     return (now - cached.timestamp) < ttl;
+  }
+
+  /**
+   * Get current user from cache or fetch from API
+   *
+   * @returns Current user object
+   *
+   * Note: User is cached with same TTL as other entities (default 60 min).
+   * This dramatically reduces API calls for commands that need current user (e.g., project list with default lead filter).
+   */
+  async getCurrentUser(): Promise<User> {
+    // Check session cache first (in-memory)
+    if (this.isCacheEnabled() && this.isValid(this.user)) {
+      return this.user!.data[0];
+    }
+
+    // Cache miss - fetch from API
+    const user = await getLinearCurrentUser();
+
+    // Save to session cache if enabled
+    if (this.isCacheEnabled()) {
+      this.user = {
+        data: [user], // Store as single-item array for consistency with CachedEntity<T>
+        timestamp: Date.now()
+      };
+    }
+
+    return user;
   }
 
   /**
@@ -459,6 +498,7 @@ export class EntityCache {
    * Use this when you want to force a fresh fetch on next access.
    */
   clear(): void {
+    this.user = undefined;
     this.teams = undefined;
     this.initiatives = undefined;
     this.members = undefined;
@@ -474,6 +514,9 @@ export class EntityCache {
    */
   clearEntity(type: CacheableEntityType): void {
     switch (type) {
+      case 'user':
+        this.user = undefined;
+        break;
       case 'teams':
         this.teams = undefined;
         break;
@@ -502,6 +545,9 @@ export class EntityCache {
    * This is called automatically on access, but can be called manually.
    */
   invalidateIfExpired(): void {
+    if (!this.isValid(this.user)) {
+      this.user = undefined;
+    }
     if (!this.isValid(this.teams)) {
       this.teams = undefined;
     }
@@ -528,6 +574,7 @@ export class EntityCache {
    * @returns Object with cache hit/miss info
    */
   getStats(): {
+    user: { cached: boolean; age?: number };
     teams: { cached: boolean; count: number; age?: number };
     initiatives: { cached: boolean; count: number; age?: number };
     members: { cached: boolean; count: number; age?: number };
@@ -536,6 +583,10 @@ export class EntityCache {
     const now = Date.now();
 
     return {
+      user: {
+        cached: this.isValid(this.user),
+        age: this.user ? now - this.user.timestamp : undefined
+      },
       teams: {
         cached: this.isValid(this.teams),
         count: this.teams?.data.length || 0,

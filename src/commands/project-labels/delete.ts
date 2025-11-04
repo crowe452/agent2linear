@@ -24,7 +24,8 @@ export function deleteProjectLabelCommand(program: Command) {
         const label = await getProjectLabelById(resolvedId);
 
         if (!label) {
-          console.error('❌ Project label not found');
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('project label', id, 'project-labels list'));
           process.exit(1);
         }
 

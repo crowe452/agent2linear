@@ -73,7 +73,7 @@ export async function listConfig() {
     console.log(`  ${displayValue} (from ${sourceLabel})`);
   } else {
     console.log('  Not set');
-    console.log('  💡 Use "linear-create initiatives list" to select one');
+    console.log('  💡 Use "agent2linear initiatives list" to select one');
   }
   console.log();
 
@@ -136,7 +136,7 @@ export async function listConfig() {
     console.log(`  ${displayValue} (from ${sourceLabel})`);
   } else {
     console.log('  Not set');
-    console.log('  💡 Use "linear-create templates list issues" to browse');
+    console.log('  💡 Use "agent2linear templates list issues" to browse');
   }
   console.log();
 
@@ -168,7 +168,7 @@ export async function listConfig() {
     console.log(`  ${displayValue} (from ${sourceLabel})`);
   } else {
     console.log('  Not set');
-    console.log('  💡 Use "linear-create templates list projects" to browse');
+    console.log('  💡 Use "agent2linear templates list projects" to browse');
   }
   console.log();
 
@@ -196,7 +196,7 @@ export async function listConfig() {
     console.log(`  ${displayValue} (from ${sourceLabel})`);
   } else {
     console.log('  Not set');
-    console.log('  💡 Use "linear-create milestone-templates list" to browse');
+    console.log('  💡 Use "agent2linear milestone-templates list" to browse');
   }
   console.log();
 }

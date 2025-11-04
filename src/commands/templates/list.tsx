@@ -125,7 +125,7 @@ function App({ options: _options, typeFilter }: { options: ListOptions; typeFilt
       )}
 
       <Box marginTop={1}>
-        <Text dimColor>💡 Tip: Use "linear-create config set defaultProjectTemplate &lt;id&gt;" to save a default</Text>
+        <Text dimColor>💡 Tip: Use "agent2linear config set defaultProjectTemplate &lt;id&gt;" to save a default</Text>
       </Box>
     </Box>
   );
@@ -221,7 +221,7 @@ export async function listTemplates(typeFilter?: string, options: ListOptions = 
           console.log('');
         }
 
-        console.log('💡 Tip: Use "linear-create config set defaultProjectTemplate <id>" to save a default');
+        console.log('💡 Tip: Use "agent2linear config set defaultProjectTemplate <id>" to save a default');
       }
     } catch (error) {
       console.error(`❌ Error: ${error instanceof Error ? error.message : 'Failed to fetch templates'}`);

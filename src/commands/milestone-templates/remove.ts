@@ -39,7 +39,7 @@ export async function removeTemplate(
     if (!existing) {
       showError(
         `Template "${name}" not found`,
-        'Use "linear-create milestone-templates list" to see available templates'
+        'Use "agent2linear milestone-templates list" to see available templates'
       );
       process.exit(1);
     }

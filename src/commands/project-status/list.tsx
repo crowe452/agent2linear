@@ -88,7 +88,7 @@ function App({ options: _options }: { options: ListOptions }) {
         })}
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>💡 Tip: Use "linear-create project-status sync-aliases" to create aliases for all statuses</Text>
+        <Text dimColor>💡 Tip: Use "agent2linear project-status sync-aliases" to create aliases for all statuses</Text>
       </Box>
     </Box>
   );
@@ -145,7 +145,7 @@ export async function listProjectStatuses(options: ListOptions = {}) {
             : '(none)';
           console.log(`${status.id}\t${status.name}\t\t${status.type}\t\t${aliasDisplay}`);
         });
-        console.log('\n💡 Tip: Use "linear-create project-status sync-aliases" to create aliases for all statuses');
+        console.log('\n💡 Tip: Use "agent2linear project-status sync-aliases" to create aliases for all statuses');
       }
     } catch (error) {
       console.error(`❌ Error: ${error instanceof Error ? error.message : 'Failed to fetch project statuses'}`);

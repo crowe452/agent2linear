@@ -30,11 +30,11 @@ export function syncInitiativeAliases(program: Command) {
     .option('-f, --force', 'Overwrite existing aliases')
     .addHelpText('after', `
 Examples:
-  $ linear-create initiatives sync-aliases           # Preview aliases
-  $ linear-create init sync-aliases --global         # Create global aliases
-  $ linear-create initiatives sync-aliases --project # Create project-local aliases
-  $ linear-create initiatives sync-aliases --dry-run # Preview changes
-  $ linear-create init sync-aliases --force          # Force override existing
+  $ agent2linear initiatives sync-aliases           # Preview aliases
+  $ agent2linear init sync-aliases --global         # Create global aliases
+  $ agent2linear initiatives sync-aliases --project # Create project-local aliases
+  $ agent2linear initiatives sync-aliases --dry-run # Preview changes
+  $ agent2linear init sync-aliases --force          # Force override existing
 
 This command will create aliases for all initiatives in your workspace,
 using the initiative name converted to lowercase with hyphens (e.g., "Backend API" → "backend-api").

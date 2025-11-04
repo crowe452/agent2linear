@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Comprehensive Test Suite for: linear-create issue create (M15.3)
+# Comprehensive Test Suite for: agent2linear issue create (M15.3)
 #
 # This script tests all permutations and combinations of the issue create command
 # including aliases, multi-value fields, auto-assignment, validation, and error cases.
 #
 # Setup Requirements:
 #   - LINEAR_API_KEY environment variable must be set
-#   - linear-create must be built (npm run build)
+#   - agent2linear must be built (npm run build)
 #   - You should have at least one team in your Linear workspace
 #
 # Usage:
@@ -40,7 +40,21 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Script identification
+SCRIPT_NAME=$(basename "$0")
+TIMESTAMP=$(date +%s)
+
+# Print runtime header
+echo ""
+echo -e "${YELLOW}==========================================${NC}"
+echo -e "${YELLOW}TEST SUITE: ${BOLD}${SCRIPT_NAME}${NC}"
+echo -e "${YELLOW}Description: Issue Create Tests${NC}"
+echo -e "${YELLOW}Timestamp: ${TIMESTAMP}${NC}"
+echo -e "${YELLOW}==========================================${NC}"
+echo ""
 
 # Configuration
 TEST_PREFIX="TEST_ISSUE_$(date +%Y%m%d_%H%M%S)"
@@ -645,13 +659,13 @@ run_test \
     "true"
 
 # Check if defaultTeam is configured in config
-if grep -q '"defaultTeam"' ~/.config/linear-create/config.json 2>/dev/null; then
+if grep -q '"defaultTeam"' ~/.config/agent2linear/config.json 2>/dev/null; then
     echo ""
     echo "=================================================="
     echo -e "${BLUE}TEST #35: Error: Missing team (no default configured)${NC}"
     echo "COMMAND: (skipped - defaultTeam is configured)"
     echo "--------------------------------------------------"
-    echo -e "${YELLOW}⊘ SKIPPED (defaultTeam is configured in ~/.config/linear-create/config.json)${NC}"
+    echo -e "${YELLOW}⊘ SKIPPED (defaultTeam is configured in ~/.config/agent2linear/config.json)${NC}"
     ((SKIPPED++))
 else
     run_test \

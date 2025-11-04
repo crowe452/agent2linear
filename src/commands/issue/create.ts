@@ -84,9 +84,9 @@ async function createIssueNonInteractive(options: CreateOptions) {
     if (!options.title) {
       console.error('❌ Error: --title is required\n');
       console.error('Provide the title:');
-      console.error('  linear-create issue create --title "Fix bug"\n');
+      console.error('  agent2linear issue create --title "Fix bug"\n');
       console.error('For all options, see:');
-      console.error('  linear-create issue create --help\n');
+      console.error('  agent2linear issue create --help\n');
       process.exit(1);
     }
 
@@ -148,11 +148,11 @@ async function createIssueNonInteractive(options: CreateOptions) {
       console.error('❌ Error: Team is required for issue creation\n');
       console.error('Please specify a team using one of these options:\n');
       console.error('  1. Use --team flag:');
-      console.error(`     $ linear-create issue create --title "${title}" --team team_xxx\n`);
+      console.error(`     $ agent2linear issue create --title "${title}" --team team_xxx\n`);
       console.error('  2. Set a default team:');
-      console.error('     $ linear-create config set defaultTeam team_xxx\n');
+      console.error('     $ agent2linear config set defaultTeam team_xxx\n');
       console.error('  3. List available teams:');
-      console.error('     $ linear-create teams list\n');
+      console.error('     $ agent2linear teams list\n');
       process.exit(1);
     }
 
@@ -217,7 +217,8 @@ async function createIssueNonInteractive(options: CreateOptions) {
     // PHASE 7: PRIORITY & ESTIMATE VALIDATION
     // ═══════════════════════════════════════════════════════════════════
 
-    // Validate priority if provided (0-4)
+    // Validate and convert priority to number (0-4)
+    let priority: number | undefined;
     if (options.priority !== undefined) {
       const { validatePriority } = await import('../../lib/validators.js');
       const priorityResult = validatePriority(options.priority);
@@ -225,12 +226,21 @@ async function createIssueNonInteractive(options: CreateOptions) {
         console.error(`❌ ${priorityResult.error}`);
         process.exit(1);
       }
+      priority = priorityResult.value; // Use converted numeric value
     }
 
-    // Estimate validation (just ensure it's a positive number)
-    if (options.estimate !== undefined && options.estimate < 0) {
-      console.error('❌ Error: Estimate must be a non-negative number');
-      process.exit(1);
+    // Validate and convert estimate to number
+    let estimate: number | undefined;
+    if (options.estimate !== undefined) {
+      const estimateValue = typeof options.estimate === 'string'
+        ? parseInt(options.estimate, 10)
+        : options.estimate;
+
+      if (isNaN(estimateValue) || estimateValue < 0) {
+        console.error('❌ Error: Estimate must be a non-negative number');
+        process.exit(1);
+      }
+      estimate = estimateValue; // Use converted numeric value
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -390,7 +400,7 @@ async function createIssueNonInteractive(options: CreateOptions) {
             console.error(`\n   This project came from your defaultProject config setting.`);
             console.error(`   To fix this, either:`);
             console.error(`     1. Use --project to specify a compatible project`);
-            console.error(`     2. Update config: linear-create config set defaultProject <project-id>\n`);
+            console.error(`     2. Update config: agent2linear config set defaultProject <project-id>\n`);
           } else {
             console.error(`\n   Please choose a project from the "${teamCheck.name}" team\n`);
           }
@@ -487,8 +497,8 @@ async function createIssueNonInteractive(options: CreateOptions) {
       title,
       teamId,
       description,
-      priority: options.priority,
-      estimate: options.estimate,
+      priority, // Use converted numeric value, not options.priority
+      estimate, // Use converted numeric value, not options.estimate
       stateId,
       assigneeId,
       subscriberIds,

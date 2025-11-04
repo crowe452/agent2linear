@@ -1,5 +1,5 @@
 /**
- * Shared parsing utilities for linear-create CLI
+ * Shared parsing utilities for agent2linear CLI
  *
  * These utilities provide consistent parsing of common input formats
  * like comma-separated values and pipe-delimited key-value pairs.

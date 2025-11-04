@@ -10,7 +10,8 @@ export function viewIcon(program: Command) {
         const icon = findIconByName(name) || findIconByEmoji(name);
 
         if (!icon) {
-          console.error(`❌ Icon not found: ${name}`);
+          const { formatEntityNotFoundError } = await import('../../lib/validators.js');
+          console.error(formatEntityNotFoundError('icon', name, 'icons list'));
           process.exit(1);
         }
 

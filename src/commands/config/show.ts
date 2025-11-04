@@ -47,7 +47,7 @@ export async function showConfig() {
     console.log(`  ${config.defaultInitiative} (from ${sourceLabel})`);
   } else {
     console.log('  Not set');
-    console.log('  💡 Use "linear-create initiatives list" to select one');
+    console.log('  💡 Use "agent2linear initiatives list" to select one');
   }
   console.log();
 

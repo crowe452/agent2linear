@@ -90,7 +90,7 @@ export function handleLinearError(error: any, context?: string): string {
         'To get a new API key:\n' +
         '  1. Go to https://linear.app/settings/api\n' +
         '  2. Create a new personal API key\n' +
-        '  3. Set it using: linear-create config set apiKey <your-key>'
+        '  3. Set it using: agent2linear config set apiKey <your-key>'
       );
 
     case 403:
@@ -123,7 +123,7 @@ export function handleLinearError(error: any, context?: string): string {
         'To avoid rate limiting:\n' +
         '  - Reduce the frequency of your requests\n' +
         '  - Use batch operations when possible\n' +
-        '  - Enable caching with: linear-create config set enableEntityCache true'
+        '  - Enable caching with: agent2linear config set enableEntityCache true'
       );
     }
 

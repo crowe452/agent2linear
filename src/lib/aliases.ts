@@ -14,9 +14,9 @@ import {
   getWorkflowStateById,
 } from './linear-client.js';
 
-const GLOBAL_ALIASES_DIR = join(homedir(), '.config', 'linear-create');
+const GLOBAL_ALIASES_DIR = join(homedir(), '.config', 'agent2linear');
 const GLOBAL_ALIASES_FILE = join(GLOBAL_ALIASES_DIR, 'aliases.json');
-const PROJECT_ALIASES_DIR = '.linear-create';
+const PROJECT_ALIASES_DIR = '.agent2linear';
 const PROJECT_ALIASES_FILE = join(PROJECT_ALIASES_DIR, 'aliases.json');
 
 /**
@@ -1026,7 +1026,7 @@ export function getAliasesForType(type: AliasEntityType): string[] {
  * // Output:
  * // Alias 'backen' not found for type 'team'.
  * // Did you mean: backend, frontend, mobile?
- * // Use "linear-create alias list team" to see all team aliases.
+ * // Use "agent2linear alias list team" to see all team aliases.
  * ```
  */
 export function getAliasSuggestionError(
@@ -1040,7 +1040,7 @@ export function getAliasSuggestionError(
     return (
       `Alias '${input}' not found for type '${type}'.\n` +
       `No ${type} aliases have been created yet.\n` +
-      `Use "linear-create alias add ${type} <alias> <id>" to create one.`
+      `Use "agent2linear alias add ${type} <alias> <id>" to create one.`
     );
   }
 
@@ -1053,7 +1053,7 @@ export function getAliasSuggestionError(
     message += `\n\nDid you mean: ${suggestions}?`;
   }
 
-  message += `\n\nUse "linear-create alias list ${type}" to see all ${type} aliases.`;
+  message += `\n\nUse "agent2linear alias list ${type}" to see all ${type} aliases.`;
 
   return message;
 }

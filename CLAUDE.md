@@ -1,7 +1,11 @@
-# linear-create - Linear CLI Tool
+# agent2linear - Linear CLI Tool
 
   ## Project Overview
-  **linear-create** is a TypeScript-based command-line tool for creating and managing Linear projects, issues, labels, workflow states, and other entities via the Linear GraphQL API.
+  **agent2linear** is a TypeScript-based command-line tool for creating and managing Linear projects, issues, labels, workflow states, and other entities via the Linear GraphQL API. Designed for AI agents and automation workflows.
+
+  **CLI Commands:**
+  - `agent2linear` - Full command name
+  - `a2l` - Short alias for convenience
 
   **Technology Stack:**
   - TypeScript (ES2022, ESNext modules)
@@ -19,15 +23,20 @@
 
   Installation & Build
 
+  # For development
   npm install
   npm run build
 
+  # For end users (npm package)
+  npm install -g agent2linear
+
   Running the CLI
 
-  # After build
-  linear-create --help
+  # After build (both commands work identically)
+  agent2linear --help
+  a2l --help
 
-  # Or via node directly
+  # Or via node directly during development
   node dist/index.js --help
 
   Development Workflow
@@ -47,6 +56,24 @@
   - Commands: src/commands/<entity>/<action>.ts(x) (.tsx for Ink components)
   - Libraries: src/lib/ - shared utilities (aliases, config, linear-client, etc.)
   - Types: src/lib/types.ts - TypeScript interfaces for all entities
+
+  ## Icon Handling (v0.13.2+)
+
+  **IMPORTANT**: Icons are NOT validated client-side.
+
+  - Icons are passed directly to Linear API for server-side validation
+  - The curated icon list (src/lib/icons.ts) is for discovery only, not validation
+  - Investigation confirmed Linear's API has no endpoint for the standard icon catalog
+  - The `emojis` GraphQL query only returns custom organization emojis (user-uploaded)
+  - See README.md "Icon Usage" section for user documentation
+  - See MILESTONES.md M14.6 for complete investigation and rationale
+  - See src/commands/project/create.tsx:208 for inline code documentation
+
+  When implementing new commands with icon support:
+  - Do NOT add client-side icon validation
+  - Pass icon values directly to Linear API
+  - Let Linear return errors for invalid icons
+  - Reference the Icon Handling section for future developers
 
   Testing
 
@@ -71,17 +98,23 @@
   Run All Tests
 
   cd tests/scripts
-  ./run-all-tests.sh
+  ./run-all-tests.sh                # Run all project + issue tests
+  ./run-all-tests.sh --project-only # Run only project tests
+  ./run-all-tests.sh --issue-only   # Run only issue tests
 
   Run Individual Test Suites
 
-  # Project create tests (~45 test cases)
-  ./test-project-create.sh
+  # Project tests
+  ./test-project-create.sh          # ~45 test cases
+  ./test-project-update.sh          # ~35 test cases
 
-  # Project update tests (~35 test cases)
-  ./test-project-update.sh
+  # Issue tests
+  ./test-issue-view.sh              # ~10 test cases
+  ./test-issue-create.sh            # ~40 test cases
+  ./test-issue-update.sh            # ~57 test cases
+  ./test-issue-list.sh              # ~25 test cases
 
-  # Run specific test range
+  # Run specific test range (project tests only)
   ./test-project-create.sh --test 5      # Run only test #5
   ./test-project-create.sh --range 10-20 # Run tests 10-20
 
@@ -152,7 +185,7 @@
   Aliases System
 
   Aliases allow using simple names instead of Linear IDs:
-  - Storage: ~/.config/linear-create/aliases.json (global) or .linear-create/aliases.json (project)
+  - Storage: ~/.config/agent2linear/aliases.json (global) or .agent2linear/aliases.json (project)
   - Supported entities: teams, initiatives, project-statuses, members, workflow-states, issue-labels, project-labels
   - Commands: alias add/list/remove/get/edit/sync
   - Usage: Aliases can be used anywhere an ID is expected
@@ -160,7 +193,7 @@
   Milestone Templates
 
   Reusable milestone templates for projects:
-  - Storage: ~/.config/linear-create/milestone-templates.json (global) or .linear-create/milestone-templates.json (project)
+  - Storage: ~/.config/agent2linear/milestone-templates.json (global) or .agent2linear/milestone-templates.json (project)
   - Format: JSON with name, description, milestones array
   - Commands: milestone-templates create/list/view/edit/remove
   - Application: project add-milestones <project> --template <name>
@@ -168,7 +201,7 @@
   Configuration
 
   Persistent defaults for common values:
-  - Storage: ~/.config/linear-create/config.json
+  - Storage: ~/.config/agent2linear/config.json
   - Supported: defaultTeam, defaultInitiative, defaultMilestoneTemplate
   - Commands: config list/get/set/unset/edit
 
@@ -177,13 +210,13 @@
   Project Creation
 
   # Minimal
-  linear-create project create --title "My Project" --team <team-id>
+  agent2linear project create --title "My Project" --team <team-id>
 
   # With aliases
-  linear-create project create --title "API Redesign" --team backend --initiative q1-goals
+  agent2linear project create --title "API Redesign" --team backend --initiative q1-goals
 
   # Full featured
-  linear-create project create \
+  agent2linear project create \
     --title "Mobile App" \
     --team mobile \
     --initiative product-2025 \

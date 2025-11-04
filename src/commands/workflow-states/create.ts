@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import { createWorkflowState } from '../../lib/linear-client.js';
 import { resolveAlias } from '../../lib/aliases.js';
 import { getConfig } from '../../lib/config.js';
-import { isValidHexColor, normalizeHexColor } from '../../lib/colors.js';
 
 export function createWorkflowStateCommand(program: Command) {
   program
@@ -20,7 +19,7 @@ export function createWorkflowStateCommand(program: Command) {
         if (!options.name) {
           console.error('❌ Error: --name is required');
           console.log('');
-          console.log('Usage: linear-create workflow-states create --name "In Review" --team team_abc123');
+          console.log('Usage: agent2linear workflow-states create --name "In Review" --team team_abc123');
           process.exit(1);
         }
 
@@ -36,11 +35,11 @@ export function createWorkflowStateCommand(program: Command) {
           console.log('');
           console.log('Please specify a team using one of these options:');
           console.log('  1. Use --team flag:');
-          console.log(`     $ linear-create workflow-states create --name "${options.name}" --team team_abc123`);
+          console.log(`     $ agent2linear workflow-states create --name "${options.name}" --team team_abc123`);
           console.log('');
           console.log('  2. Set a default team:');
-          console.log('     $ linear-create teams select');
-          console.log('     $ linear-create config set defaultTeam team_abc123');
+          console.log('     $ agent2linear teams select');
+          console.log('     $ agent2linear config set defaultTeam team_abc123');
           console.log('');
           process.exit(1);
         }
@@ -49,19 +48,19 @@ export function createWorkflowStateCommand(program: Command) {
         teamId = resolveAlias('team', teamId);
 
         // Validate color
-        if (!isValidHexColor(options.color)) {
-          console.error(`❌ Error: Invalid color format: ${options.color}`);
-          console.log('Color must be a valid hex code (e.g., #5E6AD2 or 5E6AD2)');
+        const { validateAndNormalizeColor, validateEnumValue } = await import('../../lib/validators.js');
+        const colorResult = validateAndNormalizeColor(options.color);
+        if (!colorResult.valid) {
+          console.error(`❌ Error: ${colorResult.error}`);
           process.exit(1);
         }
-
-        const color = normalizeHexColor(options.color);
+        const color = colorResult.value!;
 
         // Validate type
         const validTypes = ['triage', 'backlog', 'unstarted', 'started', 'completed', 'canceled'];
-        if (!validTypes.includes(options.type)) {
-          console.error(`❌ Error: Invalid type: ${options.type}`);
-          console.log(`Type must be one of: ${validTypes.join(', ')}`);
+        const typeResult = validateEnumValue(options.type, validTypes, 'type');
+        if (!typeResult.valid) {
+          console.error(`❌ Error: ${typeResult.error}`);
           process.exit(1);
         }
 

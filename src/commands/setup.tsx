@@ -46,12 +46,6 @@ type SetupStep =
 	| 'walkthrough-7'
 	| 'completion';
 
-interface AliasOptions {
-	workflowStates: boolean;
-	projectStatuses: boolean;
-	members: boolean;
-}
-
 function SetupWizard() {
 	const [step, setStep] = useState<SetupStep>('welcome');
 	const [scope, setScope] = useState<'global' | 'project' | null>(null);
@@ -386,13 +380,13 @@ function SetupWizard() {
 		return (
 			<Box flexDirection="column" gap={1}>
 				<Text bold color="cyan">
-					🚀 Welcome to linear-create!
+					🚀 Welcome to agent2linear!
 				</Text>
 				<Box>
 					<Text color="gray">{'━'.repeat(50)}</Text>
 				</Box>
 				<Text>
-					This setup wizard will guide you through configuring linear-create
+					This setup wizard will guide you through configuring agent2linear
 					for your Linear workspace.
 				</Text>
 				<Box flexDirection="column" marginTop={1}>
@@ -436,7 +430,7 @@ function SetupWizard() {
 					<Text color="gray">{'━'.repeat(50)}</Text>
 				</Box>
 				<Text>
-					It looks like linear-create is already configured on this system.
+					It looks like agent2linear is already configured on this system.
 				</Text>
 				<Box flexDirection="column" marginTop={1}>
 					<Text bold>Found configuration files:</Text>
@@ -472,7 +466,7 @@ function SetupWizard() {
 				<Box flexDirection="column" marginTop={1}>
 					<Text color="cyan">To reconfigure, use:</Text>
 					<Box marginLeft={2}>
-						<Text color="green">$ linear-create config edit</Text>
+						<Text color="green">$ agent2linear config edit</Text>
 					</Box>
 				</Box>
 				<Box marginTop={1}>
@@ -488,11 +482,11 @@ function SetupWizard() {
 	if (step === 'scope-selection') {
 		const scopeItems = [
 			{
-				label: 'Global (~/.config/linear-create/)',
+				label: 'Global (~/.config/agent2linear/)',
 				value: 'global' as const,
 			},
 			{
-				label: 'Project (.linear-create/)',
+				label: 'Project (.agent2linear/)',
 				value: 'project' as const,
 			},
 		];
@@ -541,7 +535,7 @@ function SetupWizard() {
 						<Text>2. Click "Create new API key"</Text>
 					</Box>
 					<Box marginLeft={2}>
-						<Text>3. Give it a name (e.g., "linear-create CLI")</Text>
+						<Text>3. Give it a name (e.g., "agent2linear CLI")</Text>
 					</Box>
 					<Box marginLeft={2}>
 						<Text>4. Copy the key (starts with "lin_api_")</Text>
@@ -835,7 +829,7 @@ function SetupWizard() {
 				</Text>
 				<Box marginLeft={2} marginTop={1}>
 					<Text color="green">
-						$ linear-create project create --team engineering
+						$ agent2linear project create --team engineering
 					</Text>
 				</Box>
 				<Box marginLeft={2}>
@@ -859,11 +853,11 @@ function SetupWizard() {
 			<WalkthroughScreen
 				title="Project Creation"
 				icon="📋"
-				description={`Projects are the primary way to organize work in Linear. Use linear-create to quickly create projects from the command line.`}
+				description={`Projects are the primary way to organize work in Linear. Use agent2linear to quickly create projects from the command line.`}
 				examples={[
-					'linear-create project create --title "My Project"',
-					'linear-create project create --title "Q2 Initiative" --team engineering',
-					'linear-create project create --interactive',
+					'agent2linear project create --title "My Project"',
+					'agent2linear project create --title "Q2 Initiative" --team engineering',
+					'agent2linear project create --interactive',
 				]}
 				currentStep={1}
 				totalSteps={7}
@@ -879,9 +873,9 @@ function SetupWizard() {
 				icon="🏷️"
 				description={`Aliases let you use memorable names instead of Linear IDs. Create aliases for teams, members, templates, labels, and more.`}
 				examples={[
-					'linear-create alias add team engineering team_abc123',
-					'linear-create alias list',
-					'linear-create workflow-states sync-aliases --team engineering',
+					'agent2linear alias add team engineering team_abc123',
+					'agent2linear alias list',
+					'agent2linear workflow-states sync-aliases --team engineering',
 				]}
 				currentStep={2}
 				totalSteps={7}
@@ -897,9 +891,9 @@ function SetupWizard() {
 				icon="📝"
 				description={`Templates help you create consistent projects and issues. Browse available templates and set defaults for quick project creation.`}
 				examples={[
-					'linear-create templates list',
-					'linear-create config set defaultProjectTemplate template_xxx',
-					'linear-create project create --template my-template',
+					'agent2linear templates list',
+					'agent2linear config set defaultProjectTemplate template_xxx',
+					'agent2linear project create --template my-template',
 				]}
 				currentStep={3}
 				totalSteps={7}
@@ -915,10 +909,10 @@ function SetupWizard() {
 				icon="🎨"
 				description={`Manage project labels, issue labels, workflow states, icons, and colors. Keep your Linear workspace organized and consistent.`}
 				examples={[
-					'linear-create project-labels list',
-					'linear-create issue-labels sync-aliases',
-					'linear-create icons list --search rocket',
-					'linear-create colors list',
+					'agent2linear project-labels list',
+					'agent2linear issue-labels sync-aliases',
+					'agent2linear icons list --search rocket',
+					'agent2linear colors list',
 				]}
 				currentStep={4}
 				totalSteps={7}
@@ -932,12 +926,12 @@ function SetupWizard() {
 			<WalkthroughScreen
 				title="Configuration Management"
 				icon="⚙️"
-				description={`Your configuration is stored in ${scope === 'global' ? '~/.config/linear-create/' : '.linear-create/'}. You can edit it anytime or use config commands.`}
+				description={`Your configuration is stored in ${scope === 'global' ? '~/.config/agent2linear/' : '.agent2linear/'}. You can edit it anytime or use config commands.`}
 				examples={[
-					'linear-create config edit',
-					'linear-create config get',
-					'linear-create config set defaultTeam team_xxx',
-					'linear-create teams select',
+					'agent2linear config edit',
+					'agent2linear config get',
+					'agent2linear config set defaultTeam team_xxx',
+					'agent2linear teams select',
 				]}
 				currentStep={5}
 				totalSteps={7}
@@ -951,11 +945,11 @@ function SetupWizard() {
 			<WalkthroughScreen
 				title="Common Workflows"
 				icon="🔄"
-				description={`Here are some common workflows to get you started with linear-create.`}
+				description={`Here are some common workflows to get you started with agent2linear.`}
 				examples={[
-					'# Create a new project\nlinear-create project create --title "New Feature"',
-					'# List all teams and select default\nlinear-create teams select',
-					'# Sync workflow state aliases for easier reference\nlinear-create workflow-states sync-aliases',
+					'# Create a new project\nagent2linear project create --title "New Feature"',
+					'# List all teams and select default\nagent2linear teams select',
+					'# Sync workflow state aliases for easier reference\nagent2linear workflow-states sync-aliases',
 				]}
 				currentStep={6}
 				totalSteps={7}
@@ -969,11 +963,11 @@ function SetupWizard() {
 			<WalkthroughScreen
 				title="Help & Resources"
 				icon="💡"
-				description={`Need help? Use these commands to explore linear-create capabilities.`}
+				description={`Need help? Use these commands to explore agent2linear capabilities.`}
 				examples={[
-					'linear-create --help',
-					'linear-create project --help',
-					'linear-create config --help',
+					'agent2linear --help',
+					'agent2linear project --help',
+					'agent2linear config --help',
 				]}
 				currentStep={7}
 				totalSteps={7}
@@ -1117,7 +1111,7 @@ function SetupWizard() {
 				<Box flexDirection="column">
 					<Text bold>Your configuration:</Text>
 					<Box marginLeft={2}>
-						<Text>📁 Scope: {scope === 'global' ? 'Global' : 'Project'} ({scope === 'global' ? '~/.config/linear-create/' : '.linear-create/'})</Text>
+						<Text>📁 Scope: {scope === 'global' ? 'Global' : 'Project'} ({scope === 'global' ? '~/.config/agent2linear/' : '.agent2linear/'})</Text>
 					</Box>
 					<Box marginLeft={2}>
 						<Text>🔑 API Key: {maskApiKey(apiKey)} ✓ valid</Text>
@@ -1147,20 +1141,20 @@ function SetupWizard() {
 					</Box>
 					<Box marginLeft={4}>
 						<Text color="green">
-							$ linear-create project create --title "My First Project"
+							$ agent2linear project create --title "My First Project"
 						</Text>
 					</Box>
 					<Box marginLeft={2} marginTop={1}>
 						<Text>View all commands:</Text>
 					</Box>
 					<Box marginLeft={4}>
-						<Text color="green">$ linear-create --help</Text>
+						<Text color="green">$ agent2linear --help</Text>
 					</Box>
 					<Box marginLeft={2} marginTop={1}>
 						<Text>Reconfigure later:</Text>
 					</Box>
 					<Box marginLeft={4}>
-						<Text color="green">$ linear-create config edit</Text>
+						<Text color="green">$ agent2linear config edit</Text>
 					</Box>
 				</Box>
 				<Box marginTop={1}>

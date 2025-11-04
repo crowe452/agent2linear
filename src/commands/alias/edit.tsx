@@ -584,8 +584,8 @@ function AliasEditor({ options }: { options: EditOptions }) {
   // Step 1: Select scope
   if (step === 'scope') {
     const scopeItems = [
-      { label: 'Global (~/.config/linear-create/aliases.json)', value: 'global' as const },
-      { label: 'Project (.linear-create/aliases.json)', value: 'project' as const },
+      { label: 'Global (~/.config/agent2linear/aliases.json)', value: 'global' as const },
+      { label: 'Project (.agent2linear/aliases.json)', value: 'project' as const },
     ];
 
     return (

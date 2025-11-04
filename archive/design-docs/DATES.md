@@ -4,6 +4,13 @@
 
 This document defines the comprehensive date input system for Linear projects, supporting flexible date formats, smart parsing, and interactive guidance while maintaining full manual control.
 
+**Status:**
+- ✅ **Phase 1 IMPLEMENTED (v0.21.0)**: Basic date formats (quarters, months, years, half-years, ISO dates) - See M22 in MILESTONES.md
+- 🚧 **Phase 2 PENDING**: Relative shortcuts (this-quarter, next-month, +1q) - Deferred to M23
+- 🚧 **Phase 3 PENDING**: Interactive date picker - Deferred to M23
+
+**Implementation:** `src/lib/date-parser.ts` with 98%+ test coverage (93 unit tests)
+
 ## Linear's Date System
 
 ### How It Works
@@ -19,7 +26,7 @@ Linear uses a **two-field system** for project dates:
 
 | Resolution | Description | ISO Date Example | Linear Display |
 |------------|-------------|------------------|----------------|
-| **None** | Specific day precision (default) | `2025-01-15` | "Jan 15, 2025" |
+| **None** (undefined) | Specific day precision (default) | `2025-01-15` | "Jan 15, 2025" |
 | **`month`** | Month-level precision | `2025-01-01` | "January 2025" |
 | **`quarter`** | Quarter precision (Q1-Q4) | `2025-01-01` | "Q1 2025" |
 | **`halfYear`** | Half-year precision (H1-H2) | `2025-01-01` | "H1 2025" |
@@ -50,6 +57,11 @@ The `YYYY-MM-DD` format is used because:
 - ✅ **Sortable**: Alphabetical order = chronological order
 - ✅ **Universal**: Standard across APIs, databases, and programming languages
 - ✅ **Linear API requirement**: The GraphQL API expects this format
+
+### Previously Considered Approaches
+
+- **Option 1 – Strict manual input:** Keep today’s ISO-only fields with optional resolution flags. Low engineering effort but offers no improvement for users who struggle with formatting.
+- **Option 2 – Fully interactive flow:** Require the guided picker for all input, ensuring correctness but slowing down power users and automation.
 
 ## Option 3: Hybrid Approach (Implementation Plan)
 
@@ -164,12 +176,95 @@ The date parser returns:
 
 ```typescript
 interface ParsedDate {
+  success: true;
   date: string;                // ISO 8601: "2025-01-01"
   resolution?: 'month' | 'quarter' | 'halfYear' | 'year';  // undefined = specific day
   displayText: string;         // "Q1 2025" (for confirmation messages)
-  inputFormat: string;         // "quarter" | "halfYear" | "month" | "year" | "specific"
+  inputFormat: 'quarter' | 'halfYear' | 'month' | 'year' | 'specific';
 }
 ```
+
+### Parser Priority & Precedence
+
+When parsing date input, the parser applies patterns in the following priority order to handle ambiguous inputs:
+
+**Priority 1: Relative Shortcuts** (Exact matches, case-insensitive)
+- `this-quarter`, `this-q`, `next-month`, `today`, etc.
+- Example: `"this-quarter"` → Always treated as shortcut
+
+**Priority 2: Named Shortcuts** (Exact matches, case-insensitive)
+- `q1`, `q2`, `h1`, `h2`, `jan`, `feb`, etc.
+- Example: `"q1"` → Q1 of current year (not a typo for "Q1 2025")
+- Example: `"jan"` → January of current year
+
+**Priority 3: Offset Patterns** (Regex: `^[+-]\d+[qhmywd]$`)
+- `+1q`, `-2m`, `+7d`, etc.
+- Example: `"+1q"` → 1 quarter from now
+- Example: `"-1m"` → 1 month before start of current month
+
+**Priority 4: Explicit Format Patterns** (Order matters)
+1. **Quarter with Year:** `2025-Q1`, `Q1 2025`, `q1-2025`
+2. **Half-Year with Year:** `2025-H1`, `H1 2025`, `h1-2025`
+3. **Month with Year:** `2025-01`, `Jan 2025`, `January 2025`, `2025-Jan`
+4. **Year Only:** `2025`, `2026` (4-digit number)
+5. **ISO Date:** `2025-01-15` (YYYY-MM-DD)
+
+**Ambiguity Resolution Examples:**
+
+| Input | Matches Multiple? | Resolution | Result |
+|-------|-------------------|------------|--------|
+| `"q1"` | Named shortcut (P2) vs. typo for "Q1 2025" | Named shortcut (P2) | Q1 of current year |
+| `"2025"` | Year (P4.4) vs. part of "2025-Q1" | Year (P4.4) | Year 2025 (2025-01-01) |
+| `"2025-01"` | Month (P4.3) vs. partial ISO date | Month (P4.3) | January 2025 |
+| `"+1q"` | Offset (P3) | Offset (P3) | 1 quarter from now |
+| `"jan"` | Named month (P2) vs. "Jan 2025" | Named month (P2) | January of current year |
+
+**Implementation Pattern:**
+```typescript
+export function parseProjectDate(input: string): DateParseResult {
+  const trimmed = input.trim();
+
+  // P1: Check relative shortcuts (exact match)
+  if (RELATIVE_SHORTCUTS.has(trimmed.toLowerCase())) {
+    return resolveRelativeShortcut(trimmed);
+  }
+
+  // P2: Check named shortcuts (exact match)
+  if (NAMED_SHORTCUTS.has(trimmed.toLowerCase())) {
+    return resolveNamedShortcut(trimmed);
+  }
+
+  // P3: Check offset patterns (regex)
+  const offsetMatch = trimmed.match(/^([+-]\d+)([qhmywd])$/i);
+  if (offsetMatch) {
+    return calculateOffset(offsetMatch);
+  }
+
+  // P4: Try explicit format patterns in order
+  // P4.1: Quarter with year
+  const quarterMatch = trimmed.match(/^(?:(\d{4})-?q(\d)|q(\d)[\s-]?(\d{4}))$/i);
+  if (quarterMatch) { /* ... */ }
+
+  // P4.2: Half-year with year
+  const halfMatch = trimmed.match(/^(?:(\d{4})-?h(\d)|h(\d)[\s-]?(\d{4}))$/i);
+  if (halfMatch) { /* ... */ }
+
+  // P4.3: Month with year (multiple formats)
+  // ... continue pattern matching
+
+  // No match - return error with suggestions
+  return {
+    success: false,
+    error: `Invalid date format: "${input}"`,
+    suggestion: '...'
+  };
+}
+```
+
+**Case Sensitivity:**
+- All patterns are case-insensitive
+- `"Q1"`, `"q1"`, and `"Q1"` all work
+- `"Jan"`, `"jan"`, and `"JAN"` all work
 
 ### Error Messages
 
@@ -341,16 +436,17 @@ Warn user if override doesn't match input format:
  */
 
 export interface ParsedDate {
+  success: true;
   date: string;                // ISO 8601 format: YYYY-MM-DD
-  resolution?: 'month' | 'quarter' | 'halfYear' | 'year';
+  resolution?: 'month' | 'quarter' | 'halfYear' | 'year';  // undefined = specific day
   displayText: string;         // Human-readable: "Q1 2025"
   inputFormat: 'quarter' | 'halfYear' | 'month' | 'year' | 'specific';
 }
 
 export interface DateParseError {
   success: false;
-  error: string;
-  suggestion: string;
+  error: string;               // Error message describing what went wrong
+  suggestion: string;          // Helpful examples showing correct format
 }
 
 export type DateParseResult = ParsedDate | DateParseError;
@@ -367,13 +463,15 @@ export function validateISODate(date: string): boolean;
 
 /**
  * Get quarter start date (1-4 → ISO date)
+ * Note: Runtime validation should ensure quarter is 1-4 when dynamically calculated
  */
-export function getQuarterStartDate(year: number, quarter: 1 | 2 | 3 | 4): string;
+export function getQuarterStartDate(year: number, quarter: number): string;
 
 /**
  * Get half-year start date (1-2 → ISO date)
+ * Note: Runtime validation should ensure half is 1 or 2 when dynamically calculated
  */
-export function getHalfYearStartDate(year: number, half: 1 | 2): string;
+export function getHalfYearStartDate(year: number, half: number): string;
 
 /**
  * Get month start date
@@ -387,6 +485,8 @@ export function parseMonthName(monthName: string): number | null;
 
 /**
  * Format parsed date for display confirmation
+ * Note: ParsedDate.displayText already contains formatted text. This function
+ * is for additional formatting contexts (e.g., adding icons, colors, or other metadata).
  */
 export function formatDateDisplay(parsed: ParsedDate): string;
 ```
@@ -411,12 +511,11 @@ if (options.startDate) {
   }
   parsedStartDate = result;
 
-  // Check for manual override
+  // Check for manual override (warn if mismatch, but use explicit flag)
   if (options.startDateResolution && options.startDateResolution !== parsedStartDate.resolution) {
     console.warn(`⚠️  Date format "${options.startDate}" suggests ${parsedStartDate.inputFormat} resolution,`);
     console.warn(`   but you specified "${options.startDateResolution}"`);
     console.warn(`   Using ${options.startDateResolution} resolution as requested.`);
-    parsedStartDate.resolution = options.startDateResolution;
   }
 
   console.log(`📅 Start date: ${parsedStartDate.displayText}`);
@@ -424,13 +523,13 @@ if (options.startDate) {
 
 // Similar for targetDate...
 
-// Pass to API
+// Pass to API (explicit resolution flag takes precedence over parsed resolution)
 const projectData: ProjectCreateInput = {
   // ...
   startDate: parsedStartDate?.date,
-  startDateResolution: options.startDateResolution || parsedStartDate?.resolution,
+  startDateResolution: options.startDateResolution ?? parsedStartDate?.resolution,
   targetDate: parsedTargetDate?.date,
-  targetDateResolution: options.targetDateResolution || parsedTargetDate?.resolution,
+  targetDateResolution: options.targetDateResolution ?? parsedTargetDate?.resolution,
 };
 ```
 
@@ -569,36 +668,45 @@ Test all input formats:
 describe('parseProjectDate', () => {
   describe('Quarter formats', () => {
     it('parses "2025-Q1"', () => {
-      expect(parseProjectDate('2025-Q1')).toEqual({
-        date: '2025-01-01',
-        resolution: 'quarter',
-        displayText: 'Q1 2025',
-        inputFormat: 'quarter',
-      });
+      const result = parseProjectDate('2025-Q1');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.date).toBe('2025-01-01');
+        expect(result.resolution).toBe('quarter');
+        expect(result.displayText).toBe('Q1 2025');
+        expect(result.inputFormat).toBe('quarter');
+      }
     });
 
     it('parses "Q2 2025"', () => {
-      expect(parseProjectDate('Q2 2025')).toEqual({
-        date: '2025-04-01',
-        resolution: 'quarter',
-        displayText: 'Q2 2025',
-        inputFormat: 'quarter',
-      });
+      const result = parseProjectDate('Q2 2025');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.date).toBe('2025-04-01');
+        expect(result.resolution).toBe('quarter');
+        expect(result.displayText).toBe('Q2 2025');
+        expect(result.inputFormat).toBe('quarter');
+      }
     });
 
     it('is case-insensitive', () => {
-      expect(parseProjectDate('2025-q1')).toEqual({
-        date: '2025-01-01',
-        resolution: 'quarter',
-        displayText: 'Q1 2025',
-        inputFormat: 'quarter',
-      });
+      const result = parseProjectDate('2025-q1');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.date).toBe('2025-01-01');
+        expect(result.resolution).toBe('quarter');
+        expect(result.displayText).toBe('Q1 2025');
+        expect(result.inputFormat).toBe('quarter');
+      }
     });
 
     it('rejects invalid quarters', () => {
       const result = parseProjectDate('2025-Q5');
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Q1, Q2, Q3, or Q4');
+      if (!result.success) {
+        expect(result.error).toContain('Q1, Q2, Q3, or Q4');
+        expect(result.suggestion).toBeDefined();
+      }
     });
   });
 
@@ -820,10 +928,17 @@ Inspired by tools like Superhuman, add relative date shortcuts that calculate da
 
 **Offset:**
 ```bash
---start-date "+1m"               # 1 month from now
---start-date "+3m"               # 3 months from now
---start-date "-1m"               # 1 month ago
+--start-date "+1m"               # 1 month from start of current month (resolution: month)
+--start-date "+3m"               # 3 months from start of current month (resolution: month)
+--start-date "-1m"               # 1 month before start of current month (resolution: month)
 ```
+
+**Important:** Month offsets calculate from the **start of the current month** and return the **1st day of the target month** with `resolution: month`. This ensures consistent behavior:
+- Today is Feb 15, 2025
+- `+1m` → March 1, 2025 (not March 15)
+- `-1m` → January 1, 2025 (not January 15)
+
+For day-specific offsets (e.g., Feb 15 → March 15), use the day offset shortcuts instead (`+30d`).
 
 **Named (from start of year):**
 ```bash
@@ -853,9 +968,11 @@ Inspired by tools like Superhuman, add relative date shortcuts that calculate da
 
 **Offset:**
 ```bash
---start-date "+1y"               # 1 year from now
---start-date "-1y"               # 1 year ago
+--start-date "+1y"               # 1 year from now (snaps to Jan 1 of target year)
+--start-date "-1y"               # 1 year ago (snaps to Jan 1 of previous year)
 ```
+
+Year offsets intentionally snap to the first day of the resulting year for consistency with other coarse resolutions. Use month (`+12m`) or day offsets when you need exact month/day preservation.
 
 #### Day/Week Shortcuts (For Specific Dates)
 
@@ -872,23 +989,35 @@ Inspired by tools like Superhuman, add relative date shortcuts that calculate da
 
 **Relative Weeks:**
 ```bash
---start-date "this-week"         # Start of current week (Monday)
---start-date "next-week"         # Start of next week
---start-date "last-week"         # Start of last week
+--start-date "this-week"         # Start of current week (Monday per ISO 8601)
+--start-date "next-week"         # Start of next week (Monday)
+--start-date "last-week"         # Start of last week (Monday)
 
---start-date "+1w"               # 1 week from now
---start-date "+2w"               # 2 weeks from now
---start-date "-1w"               # 1 week ago
+--start-date "+1w"               # 7 days from now (day-specific, not week-start)
+--start-date "+2w"               # 14 days from now (day-specific)
+--start-date "-1w"               # 7 days ago (day-specific)
 ```
+
+**Week Start Day Convention:**
+- Uses **ISO 8601** standard: Week starts on **Monday**
+- `this-week` returns the Monday of the current week
+- If today is Monday, `this-week` returns today
+- If today is Sunday, `this-week` returns the previous Monday (6 days ago)
+
+**Note:** Week offsets (`+1w`, `-1w`) are day-specific shortcuts (equivalent to `+7d`, `-7d`) and do NOT snap to week boundaries.
 
 **Named Days (Upcoming):**
 ```bash
 --start-date "monday"            # Next Monday (or today if Monday)
 --start-date "mon"               # Alias
+--start-date "next-monday"       # Explicit next Monday (never today)
 --start-date "tuesday"           # Next Tuesday
 --start-date "tue"               # Alias
-# ... through sunday/sun
+--start-date "next-tuesday"      # Explicit next Tuesday (never today)
+# ... through sunday/sun and next-sunday/next-sun
 ```
+
+When the `next-` prefix is used, the parser always advances at least one week, even if the specified weekday is today.
 
 ### Shortcut Reference Table
 
@@ -904,17 +1033,19 @@ Inspired by tools like Superhuman, add relative date shortcuts that calculate da
 | **Half - Named** | `h1`, `h2` | `2025-01-01`, `2025-07-01` | `halfYear` |
 | **Month - Current** | `this-month`, `this-m` | `2025-02-01` (February 2025) | `month` |
 | **Month - Relative** | `next-month`, `next-m` | `2025-03-01` (March 2025) | `month` |
-| **Month - Offset** | `+1m`, `+3m`, `-1m` | `2025-03-01`, `2025-05-01`, `2025-01-01` | `month` |
+| **Month - Offset** | `+1m`, `+3m`, `-1m` | `2025-03-01` (March), `2025-05-01` (May), `2025-01-01` (January) | `month` |
 | **Month - Named** | `jan`, `feb`, `mar` | `2025-01-01`, `2025-02-01`, etc. | `month` |
 | **Year - Current** | `this-year`, `this-y` | `2025-01-01` | `year` |
 | **Year - Relative** | `next-year`, `next-y` | `2026-01-01` | `year` |
 | **Year - Offset** | `+1y`, `-1y` | `2026-01-01`, `2024-01-01` | `year` |
 | **Day - Relative** | `today`, `tomorrow` | `2025-02-15`, `2025-02-16` | none |
-| **Day - Offset** | `+7d`, `+14d`, `-7d` | `2025-02-22`, `2025-03-01`, `2025-02-08` | none |
-| **Week - Current** | `this-week` | `2025-02-10` (Monday) | none |
-| **Week - Relative** | `next-week` | `2025-02-17` (Monday) | none |
-| **Week - Offset** | `+1w`, `+2w` | `2025-02-22`, `2025-03-01` | none |
-| **Day Name** | `monday`, `mon` | `2025-02-17` (next Monday) | none |
+| **Day - Offset** | `+7d`, `+14d`, `-7d` | `2025-02-22` (7 days), `2025-03-01` (14 days), `2025-02-08` (7 days ago) | none |
+| **Week - Current** | `this-week` | `2025-02-10` (Monday of current week, ISO 8601) | none |
+| **Week - Relative** | `next-week` | `2025-02-17` (Monday of next week) | none |
+| **Week - Offset** | `+1w`, `+2w` | `2025-02-22` (same as +7d), `2025-03-01` (same as +14d) | none |
+| **Day Name** | `monday`, `mon`, `next-monday` | `2025-02-17` (next Monday; `next-` forces advance) | none |
+
+Year offsets (`+1y`, `-1y`) always resolve to January 1 of the resulting year. Use month or day offsets when you need to preserve the original month/day.
 
 ### Example Commands with Shortcuts
 
@@ -986,7 +1117,7 @@ linear-create proj create --title "Sprint Work" \
 
 **For "this-quarter":**
 ```typescript
-function calculateThisQuarter(): { date: string; resolution: 'quarter' } {
+function calculateThisQuarter(): ParsedDate {
   const now = new Date();
   const month = now.getMonth(); // 0-11
   const year = now.getFullYear();
@@ -996,18 +1127,23 @@ function calculateThisQuarter(): { date: string; resolution: 'quarter' } {
 
   // Get quarter start month (0, 3, 6, 9)
   const quarterStartMonth = (quarter - 1) * 3;
+  const date = `${year}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`;
+  const displayText = `Q${quarter} ${year}`;
 
   // Return first day of quarter
   return {
-    date: `${year}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`,
-    resolution: 'quarter'
+    success: true,
+    date,
+    resolution: 'quarter',
+    displayText,
+    inputFormat: 'quarter'
   };
 }
 ```
 
 **For "next-quarter":**
 ```typescript
-function calculateNextQuarter(): { date: string; resolution: 'quarter' } {
+function calculateNextQuarter(): ParsedDate {
   const now = new Date();
   const month = now.getMonth(); // 0-11
   let year = now.getFullYear();
@@ -1024,52 +1160,102 @@ function calculateNextQuarter(): { date: string; resolution: 'quarter' } {
 
   // Get quarter start month
   const quarterStartMonth = (nextQuarter - 1) * 3;
+  const date = `${year}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`;
+  const displayText = `Q${nextQuarter} ${year}`;
 
   return {
-    date: `${year}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`,
-    resolution: 'quarter'
+    success: true,
+    date,
+    resolution: 'quarter',
+    displayText,
+    inputFormat: 'quarter'
   };
 }
 ```
 
 **For offset shortcuts (+2q, -1q):**
 ```typescript
-function calculateQuarterOffset(offset: number): { date: string; resolution: 'quarter' } {
+function calculateQuarterOffset(offset: number): ParsedDate {
   const now = new Date();
-  const month = now.getMonth();
-  let year = now.getFullYear();
+  const month = now.getMonth(); // 0-11
+  const year = now.getFullYear();
 
-  // Current quarter
+  // Current quarter (1-4)
   const currentQuarter = Math.floor(month / 3) + 1;
 
-  // Calculate target quarter
-  let targetQuarter = currentQuarter + offset;
+  // Calculate total quarters from year 0 to avoid modulo issues with negatives
+  // Convert current position to absolute quarters
+  const totalQuarters = year * 4 + (currentQuarter - 1) + offset;
 
-  // Adjust year based on quarter overflow
-  const yearOffset = Math.floor((targetQuarter - 1) / 4);
-  year += yearOffset;
-  targetQuarter = ((targetQuarter - 1) % 4) + 1;
-  if (targetQuarter < 1) {
-    targetQuarter += 4;
-    year -= 1;
-  }
+  // Extract year and quarter from absolute count
+  const quarterIndex = ((totalQuarters % 4) + 4) % 4; // normalise for negatives
+  const targetYear = Math.floor((totalQuarters - quarterIndex) / 4);
+  const targetQuarter = quarterIndex + 1;
 
+  // Get quarter start month (0, 3, 6, or 9)
   const quarterStartMonth = (targetQuarter - 1) * 3;
+  const date = `${targetYear}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`;
+  const displayText = `Q${targetQuarter} ${targetYear}`;
 
   return {
-    date: `${year}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`,
-    resolution: 'quarter'
+    success: true,
+    date,
+    resolution: 'quarter',
+    displayText,
+    inputFormat: 'quarter'
   };
 }
 ```
+
+**Why This Works:**
+ - Converts to absolute quarter count from year 0: `year * 4 + (quarter - 1)`
+ - Adds offset directly to absolute count (works correctly for both positive and negative)
+ - Normalises the modulo so negative offsets still map to quarter indices 0-3
+ - Converts back to year/quarter using division and modulo without double-adjustment
 
 Similar logic applies for half-years, months, and weeks.
 
 #### Timezone Considerations
 
-All relative dates should use **local timezone** of the user running the command, not UTC. This matches user expectations:
+**Design Decision:** All relative dates use the **local timezone** of the user running the command, not UTC. This matches user expectations:
 - "today" = today in my timezone
 - "this-quarter" = current quarter where I am
+- Calculations use `new Date()` which reflects system local time
+
+**Edge Cases & Handling:**
+
+1. **Midnight Boundaries:**
+   - User runs command at 11:59 PM local time on March 31 (Q1)
+   - `this-quarter` calculates as Q1 using local date
+   - Linear API receives ISO date in UTC format
+   - The date string (`2025-01-01`) is timezone-agnostic and represents the start of Q1 universally
+
+2. **Date-Only Fields:**
+   - Linear's `startDate` and `targetDate` fields are date-only (YYYY-MM-DD), not datetime
+   - No time component means no timezone conversion issues
+   - The date represents a calendar day, not a specific moment in time
+
+3. **Quarter Boundary Example:**
+   ```
+   User in PST (UTC-8):
+   - Local time: March 31, 11:59 PM PST
+   - Local date: March 31, 2025
+   - `this-quarter` → Q1 2025 → "2025-01-01"
+   - UTC time would be April 1, 7:59 AM (next day)
+   - But calculation uses local date (March 31), so Q1 is correct
+   ```
+
+4. **Implementation:**
+   - Use `new Date()` for current date (local timezone)
+   - Extract date components using `.getFullYear()`, `.getMonth()`, `.getDate()` (local)
+   - Do NOT use `.toISOString()` which converts to UTC
+   - Format date manually: `YYYY-MM-DD` using local date values
+
+**Why This Works:**
+- Relative shortcuts ("this-quarter", "next-month") are based on user's mental model
+- User thinks in their local calendar
+- Linear's date fields have no time/timezone info
+- The ISO date format (YYYY-MM-DD) is a calendar date, not a timestamp
 
 #### Display in Confirmation
 
@@ -1182,6 +1368,7 @@ Date Shortcuts:
   Days:
     today, tomorrow           Specific days
     +7d, +14d, -7d            Offset by days
+    monday, next-monday       Named weekdays (next occurrence or explicit next)
 
 Examples:
   $ linear-create proj create --title "Q1 Goals" --start-date "this-quarter"
@@ -1227,3 +1414,41 @@ The hybrid approach provides:
 6. ✅ **Clarity**: Clear validation and confirmation messages
 
 Users can choose their preferred workflow while the system handles the complexity of mapping to Linear's API.
+
+---
+
+## Document Revision History
+
+### 2025-10-28: Bug Fixes and Clarifications
+
+**Critical Fixes:**
+1. **Quarter Offset Calculation (Implementation Considerations → Date Calculation Logic):** Rewrote `calculateQuarterOffset()` to use absolute quarter counting from year 0, fixing negative offset bugs (e.g., `-2q` from Q1 2025 now correctly returns Q3 2024 instead of Q3 2023)
+
+2. **Type System (Implementation Structure → Date Parser Utility):** Added `success: true` property to `ParsedDate` interface to create proper discriminated union with `DateParseError` (which has `success: false`)
+
+**Major Clarifications:**
+3. **Month Offset Behavior (Relative Date Shortcuts → Month Shortcuts):** Explicitly documented that month offsets (`+1m`, `-1m`) calculate from start of current month and return the 1st day of target month with `resolution: month`, not day-specific offsets
+
+4. **Parser Priority & Precedence (Mode 1: Smart Parser → Parser Priority & Precedence):** Added comprehensive section defining parsing order for ambiguous inputs (relative shortcuts → named shortcuts → offset patterns → explicit formats)
+
+5. **Timezone Handling (Implementation Considerations → Timezone Considerations):** Expanded timezone section with edge case examples, implementation guidance, and rationale for using local timezone vs UTC
+
+**Code Example Fixes:**
+6. **Type Guards (Implementation Structure → Update Commands):** Updated code examples to use `!result.success` check and proper type narrowing instead of incorrect property access
+
+7. **Mutation Prevention (Implementation Structure → Update Commands):** Removed mutation of `parsedStartDate.resolution` and used nullish coalescing (`??`) for precedence
+
+**Documentation Improvements:**
+8. **Resolution Terminology (Linear’s Date System → Resolution Types):** Standardized as "None (undefined)" throughout document
+
+9. **Function Signatures (Implementation Structure → Date Parser Utility):** Changed from strict literal types (`1 | 2 | 3 | 4`) to `number` with runtime validation notes
+
+10. **Week Start Day (Relative Date Shortcuts → Relative Weeks & Reference Table):** Clarified ISO 8601 Monday convention and distinguished between week-start shortcuts (`this-week`) and day-offset shortcuts (`+1w`)
+
+11. **Design Document Status (Overview):** Added note that this is a design document for future implementation
+
+**Table Corrections:**
+12. **Shortcut Reference (Relative Date Shortcuts → Shortcut Reference Table):** Fixed month offset table entry to show correct dates with clarifying notes
+13. **Shortcut Reference – Week Rows (Relative Date Shortcuts → Shortcut Reference Table):** Updated week-related table entries with ISO 8601 references and explanations
+
+These changes ensure the document is implementation-ready with no critical bugs, clear ambiguity resolution, and comprehensive guidance for developers.

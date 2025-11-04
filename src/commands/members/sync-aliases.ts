@@ -68,12 +68,12 @@ export function syncMemberAliases(program: Command) {
     .option('--org-wide', 'Sync all organization members (default)')
     .addHelpText('after', `
 Examples:
-  $ linear-create members sync-aliases                  # Preview all org members
-  $ linear-create users sync-aliases --global           # Create global aliases for all org members
-  $ linear-create members sync-aliases --project        # Create project-local aliases
-  $ linear-create members sync-aliases --team team_xyz  # Sync only specific team members
-  $ linear-create members sync-aliases --dry-run        # Preview changes
-  $ linear-create users sync-aliases --force            # Force override existing
+  $ agent2linear members sync-aliases                  # Preview all org members
+  $ agent2linear users sync-aliases --global           # Create global aliases for all org members
+  $ agent2linear members sync-aliases --project        # Create project-local aliases
+  $ agent2linear members sync-aliases --team team_xyz  # Sync only specific team members
+  $ agent2linear members sync-aliases --dry-run        # Preview changes
+  $ agent2linear users sync-aliases --force            # Force override existing
 
 This command will create aliases for members in your workspace,
 using the member name converted to lowercase with hyphens (e.g., "John Doe" → "john-doe").
