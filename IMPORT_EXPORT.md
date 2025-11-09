@@ -1,7 +1,7 @@
 # Import/Export Design Specification
 
-**Status**: Planning
-**Version**: 0.1.0
+**Status**: ✅ Finalized - Ready for Implementation
+**Version**: 1.0.0
 **Last Updated**: 2025-11-09
 
 ## Overview
@@ -273,22 +273,20 @@ a2l export projects --initiative "Q1 2025" --output ./backup/
 - Links
 - **Does NOT include**: Issues in the project (use `export issues` for that)
 
-**CLARIFYING QUESTION 1**: Should project export filter by team?
-- Option A: Export ALL projects in initiative (across all teams)
-- Option B: Also filter by defaultTeam or --team flag
-- Option C: Support both with --all-teams flag
+**DECISION (Q1)**: Filter by team by default with override
+- **Default**: Filters by `defaultTeam` if configured, or `--team` flag if specified
+- **Override**: Use `--all-teams` flag to export projects from all teams in initiative
+- This matches the behavior of `project list` command for consistency
 
-**CLARIFYING QUESTION 2**: What about projects without an initiative?
-- Option A: Error (must specify --initiative)
-- Option B: Allow --no-initiative flag to export projects without initiative
-- Option C: Allow --all to export ALL projects regardless of initiative
+**DECISION (Q2)**: Support projects without initiative
+- **Default**: Requires `--initiative` flag (or uses `defaultInitiative`)
+- **Override**: Use `--no-initiative` flag to export projects not assigned to any initiative
+- Provides flexibility for projects outside the initiative system
 
-**CLARIFYING QUESTION 3**: Should project export support additional filters?
-- `--status <status>` - Filter by project status
-- `--lead <id>` - Filter by project lead
-- `--priority <0-4>` - Filter by priority
-- `--start-after <date>`, `--target-before <date>` - Date range filters
-- Or keep it simple: just initiative-based?
+**DECISION (Q3)**: Support extensive filtering like issue export
+- **Yes**: Support same comprehensive filtering options
+- Filters: `--status`, `--lead`, `--priority`, `--start-after/before`, `--target-after/before`
+- Consistent with issue export flexibility and maximizes usefulness
 
 ### Filter Options (Proposed)
 
@@ -348,15 +346,18 @@ a2l project export --initiative "Q1 2025"
 
 ## Project Markdown Schema
 
-**CLARIFYING QUESTION 4**: File naming for projects?
-- Option A: Slugified name (`q1-goals.md`, `mobile-app-redesign.md`)
-- Option B: ID-based (`proj_abc123.md`)
-- Option C: Both name and ID (`q1-goals-proj_abc123.md`)
+**DECISION (Q4)**: Slugified names with configurable option
+- **Default**: Slugified project name (`q1-goals.md`, `mobile-app-redesign.md`)
+- **Configurable**: Support `--naming slug|id|combined` flag for user preference
+  - `slug`: `q1-goals.md` (default, human-readable)
+  - `id`: `proj_abc123xyz.md` (guaranteed unique)
+  - `combined`: `q1-goals-proj_abc123.md` (both readable and unique)
+- Human-readable names work better with git and are easier to review
 
-**CLARIFYING QUESTION 5**: Milestone representation?
-- Option A: Embedded in YAML front matter (array)
-- Option B: Separate section in markdown body
-- Option C: Separate files (`q1-goals-milestones.md`)
+**DECISION (Q5)**: Embedded in YAML front matter
+- Milestones stored as array in YAML front matter (see example below)
+- Single file per project keeps everything together
+- Easier to parse and import
 
 ### Proposed Format
 
@@ -495,17 +496,15 @@ a2l import issues ./backup/ --mode create
 
 **Mode: `update`**
 - Updates existing issues only
-- Matches by `identifier` field (e.g., ENG-123)
-- Errors if issue not found
-- Updates all fields from markdown
+- Matches by **waterfall strategy**: Try `identifier` (ENG-123), then `id` (issue_abc123), then `title`
+- Errors if issue not found (no match in any strategy)
+- Updates all fields from markdown (full replacement)
 
-**CLARIFYING QUESTION 6**: Update matching logic?
-- Option A: Match by identifier only (ENG-123)
-  - Problem: What if importing to different team with different prefix?
-- Option B: Match by `id` field (issue_abc123)
-  - More robust, works across teams
-- Option C: Support both (try ID first, fall back to identifier)
-- Option D: Allow --match-by flag (identifier, id, or title)
+**DECISION (Q6)**: Waterfall matching strategy
+- First: Try matching by `identifier` (e.g., ENG-123) - Best for same-team updates
+- Second: Fall back to `id` (e.g., issue_abc123xyz) - Works across teams
+- Third: Fall back to `title` (case-insensitive) - Last resort for human-edited exports
+- This provides maximum flexibility while preferring human-readable identifiers
 
 ```bash
 a2l import issues ./backup/ --mode update
@@ -513,13 +512,13 @@ a2l import issues ./backup/ --mode update
 
 **Mode: `upsert`**
 - Updates if exists, creates if not
-- Matches using same logic as update mode
+- Matches using same waterfall strategy as update mode
 - Creates new issue if no match found
 
-**CLARIFYING QUESTION 7**: Upsert behavior for partial updates?
-- Should upsert only update fields present in markdown?
-- Or replace entire issue with markdown content?
-- Flag like --partial-update to control?
+**DECISION (Q7)**: Full replacement on upsert/update
+- All fields from markdown replace the existing issue
+- Simpler implementation and more predictable behavior
+- Future: Could add `--partial` flag if needed
 
 ```bash
 a2l import issues ./backup/ --mode upsert
@@ -534,7 +533,7 @@ a2l import issues ./backup/ --mode upsert
 --team <id>                    # Target team (required for create mode)
 
 # Matching (for update/upsert modes)
---match-by <field>             # Match existing issues by: id|identifier|title (default: id)
+# Note: Uses waterfall strategy (identifier → id → title) by default
 
 # Dependency handling
 --create-missing-labels        # Create labels if they don't exist
@@ -557,22 +556,19 @@ a2l import issues ./backup/ --mode upsert
 --format <format>              # Output format: table|json (default: table)
 ```
 
-**CLARIFYING QUESTION 8**: Import target context priority?
-- When markdown says `project: Q1 Goals` but --target-project is "New Project":
-  - Option A: Flag takes precedence (override markdown)
-  - Option B: Markdown takes precedence (ignore flag)
-  - Option C: Error (conflicting values)
+**DECISION (Q8)**: CLI flags override markdown fields
+- When markdown says `project: Q1 Goals` but `--target-project "New Project"` is specified:
+  - The CLI flag takes precedence (overrides markdown)
+  - This provides maximum flexibility for bulk migrations and transformations
+  - Example: Import issues but reassign all to different project
 
-**Recommendation**: Option A (flag overrides markdown) - Most flexible
-
-**CLARIFYING QUESTION 9**: Missing dependency behavior?
+**DECISION (Q9)**: Error and skip on missing dependencies
 - If markdown references `project: Q1 Goals` that doesn't exist:
-  - Option A: Error and skip issue (unless --skip-on-error)
-  - Option B: Create project if --create-missing-projects flag
-  - Option C: Import issue but leave project field empty
-  - Option D: Prompt user interactively
-
-**Recommendation**: Option A as default, with opt-in flags for B and C
+  - **Default behavior**: Error and skip the issue, report in summary
+  - **With `--skip-on-error`**: Skip issue with warning, continue import
+  - **With `--create-missing-projects`**: Create the project automatically
+  - **With `--create-missing-labels`**: Create labels automatically
+- Similar handling for missing assignees, teams, states, etc.
 
 ### Validation
 
@@ -689,11 +685,13 @@ a2l import projects ./backup/ --validate
 
 Same three modes as issue import: `create`, `update`, `upsert`
 
-**CLARIFYING QUESTION 10**: Project matching for update/upsert?
-- Option A: Match by project `id` (proj_abc123)
-- Option B: Match by project `name` (case-insensitive)
-- Option C: Match by `slug`
-- Option D: Support all with --match-by flag
+**DECISION (Q10)**: Support flexible matching with default
+- **Default**: Match by `id` field (proj_abc123) - most robust
+- **Configurable**: Support `--match-by id|name|slug` flag
+  - `id`: Match by UUID (works across renames)
+  - `name`: Match by project name (case-insensitive)
+  - `slug`: Match by project slug
+- Similar to issue matching, but single strategy (not waterfall)
 
 ### Import Options
 
@@ -817,36 +815,19 @@ Run without --dry-run to execute import.
 
 ## Incremental Export
 
-**CLARIFYING QUESTION 11**: Should we support incremental export?
+**DECISION (Q11)**: No incremental support
+- **Always full snapshot** - Simpler implementation and easier to understand
+- Users can still filter by date ranges using existing `--updated-after` flag from `issue list`
+- No automatic tracking of last export timestamp
+- Keeps implementation straightforward and predictable
 
-**Option A: No incremental support**
-- Always full snapshot
-- Simpler implementation
-- Easier to understand
-
-**Option B: Timestamp-based incremental**
-- Track last export timestamp
-- Use --updated-after to export only changed issues
-- Store metadata in export directory
-
+**Example** (using existing date filters):
 ```bash
-# First export (full)
-a2l export issues --project "Q1 Goals" --output ./backup/
-
-# Later exports (incremental)
-a2l export issues --project "Q1 Goals" --output ./backup/ --incremental
-# Automatically uses updated-after from last export
-```
-
-**Option C: Manual incremental**
-- User specifies --updated-after flag manually
-- No automatic tracking
-
-```bash
+# Export only recently updated issues (manual filtering)
 a2l export issues --project "Q1 Goals" --updated-after 2025-11-01
 ```
 
-**Recommendation**: Start with Option C (manual), add Option B later if needed.
+**Note**: This uses the same date filtering as `issue list`, no new functionality needed.
 
 ## Implementation Plan
 
@@ -1005,47 +986,43 @@ tests/scripts/
   test-export-import.sh  # Integration tests
 ```
 
-## Open Questions
+## Design Decisions Summary
 
-### Priority: High
+All design questions have been answered. Here's the final decision summary:
 
-1. **Q6: Update/Upsert Matching** - How to match existing issues/projects?
-   - Recommendation: Match by `id` field (most robust)
-   - Support --match-by flag for flexibility
+### Issue Import/Export Decisions
 
-2. **Q8: Import Override Priority** - Flag vs markdown field priority?
-   - Recommendation: Flag overrides markdown
+| Question | Decision |
+|----------|----------|
+| **Q6: Issue Matching** | Waterfall: identifier → id → title (prefer human-readable) |
+| **Q7: Upsert Mode** | Full replacement (all fields updated) |
+| **Q8: CLI Override** | CLI flags override markdown fields |
+| **Q9: Missing Dependencies** | Error and skip by default, with opt-in `--create-missing-*` flags |
 
-3. **Q9: Missing Dependencies** - How to handle missing teams/projects/labels?
-   - Recommendation: Error by default, opt-in flags for creation/skipping
+### Project Import/Export Decisions
 
-### Priority: Medium
+| Question | Decision |
+|----------|----------|
+| **Q1: Team Filtering** | Filter by defaultTeam/--team, override with --all-teams |
+| **Q2: No Initiative** | Support --no-initiative flag |
+| **Q3: Additional Filters** | Yes - support status, lead, priority, date filters (like issues) |
+| **Q4: File Naming** | Slugified by default, configurable with --naming flag |
+| **Q5: Milestones** | Embedded in YAML front matter as array |
+| **Q10: Project Matching** | Match by id (default), configurable with --match-by flag |
 
-4. **Q1: Project Export Team Filter** - Should it filter by team?
-   - Recommendation: Yes, support --team and --all-teams
+### General Decisions
 
-5. **Q2: Projects Without Initiative** - How to handle?
-   - Recommendation: Allow --no-initiative flag
+| Question | Decision |
+|----------|----------|
+| **Q11: Incremental Export** | No automatic incremental - always full snapshot |
 
-6. **Q3: Project Export Filters** - Support status/lead/priority filters?
-   - Recommendation: Yes, mirror issue export flexibility
+### Key Design Principles
 
-7. **Q4: Project File Naming** - Slugified vs ID-based?
-   - Recommendation: Slugified name (human-readable)
-
-8. **Q5: Milestone Representation** - Embedded vs separate files?
-   - Recommendation: Embedded in YAML (simpler)
-
-### Priority: Low
-
-9. **Q7: Upsert Partial Updates** - Update only changed fields?
-   - Recommendation: Full replacement (simpler), add --partial later if needed
-
-10. **Q10: Project Matching** - By ID, name, or slug?
-    - Recommendation: By `id` with --match-by for alternatives
-
-11. **Q11: Incremental Export** - Support incremental exports?
-    - Recommendation: Manual only (--updated-after), no tracking
+1. **Discoverability**: Multiple aliases (`export issues`, `issue export`, `project export-issues`)
+2. **Consistency**: Same patterns as existing commands (`issue list` filters, `project list` defaults)
+3. **Safety**: Dry-run and validation support, error by default for missing dependencies
+4. **Flexibility**: Configurable naming, matching strategies, extensive filtering
+5. **Simplicity**: No state tracking, full snapshots, predictable behavior
 
 ## Success Criteria
 
