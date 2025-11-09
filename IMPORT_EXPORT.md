@@ -831,129 +831,129 @@ a2l export issues --project "Q1 Goals" --updated-after 2025-11-01
 
 ## Implementation Plan
 
-### Phase 1: Issue Export (M15-T01 through M15-T05)
+### Phase 1: Issue Export (M27-T01 through M27-T05)
 
-1. **M15-T01**: Implement `export issues` command core
+1. **M27-T01**: Implement `export issues` command core
    - CLI argument parsing
    - Filter integration with `issue list`
    - Directory structure creation
 
-2. **M15-T02**: Implement issue markdown generation
+2. **M27-T02**: Implement issue markdown generation
    - YAML front matter serialization
    - Markdown body formatting
    - Comment embedding
    - File writing
 
-3. **M15-T03**: Implement metadata.json generation
+3. **M27-T03**: Implement metadata.json generation
    - Export metadata tracking
    - Filter information storage
    - Statistics collection
 
-4. **M15-T04**: Add export validation and dry-run
+4. **M27-T04**: Add export validation and dry-run
    - Dry-run preview
    - Output validation
    - Error handling
 
-5. **M15-T05**: Command aliases and help text
+5. **M27-T05**: Command aliases and help text
    - Register `issue export` alias
    - Update help documentation
    - Add usage examples
 
-### Phase 2: Issue Import (M15-T06 through M15-T10)
+### Phase 2: Issue Import (M27-T06 through M27-T10)
 
-6. **M15-T06**: Implement `import issues` command core
+6. **M27-T06**: Implement `import issues` command core
    - CLI argument parsing
    - Directory reading
    - File discovery
 
-7. **M15-T07**: Implement markdown parsing
+7. **M27-T07**: Implement markdown parsing
    - YAML front matter parsing
    - Validation logic
    - Error reporting
 
-8. **M15-T08**: Implement import modes
+8. **M27-T08**: Implement import modes
    - Create mode
    - Update mode
    - Upsert mode
    - Matching logic
 
-9. **M15-T09**: Implement dependency resolution
+9. **M27-T09**: Implement dependency resolution
    - Team/project/label resolution
    - Assignee resolution
    - Missing dependency handling
    - Creation flags
 
-10. **M15-T10**: Add import validation and dry-run
+10. **M27-T10**: Add import validation and dry-run
     - Validation-only mode
     - Dry-run preview
     - Detailed error reporting
 
-### Phase 3: Project Export (M15-T11 through M15-T15)
+### Phase 3: Project Export (M27-T11 through M27-T15)
 
-11. **M15-T11**: Implement `export projects` command
+11. **M27-T11**: Implement `export projects` command
     - CLI argument parsing
     - Initiative-based filtering
     - Additional filter support
 
-12. **M15-T12**: Implement project markdown generation
+12. **M27-T12**: Implement project markdown generation
     - YAML front matter for projects
     - Milestone embedding
     - Content formatting
 
-13. **M15-T13**: Add project export validation
+13. **M27-T13**: Add project export validation
     - Dry-run support
     - Error handling
 
-14. **M15-T14**: Command aliases for projects
+14. **M27-T14**: Command aliases for projects
     - Register `project export` alias
     - Help documentation
 
-### Phase 4: Project Import (M15-T16 through M15-T20)
+### Phase 4: Project Import (M27-T16 through M27-T20)
 
-15. **M15-T16**: Implement `import projects` command
+15. **M27-T16**: Implement `import projects` command
     - CLI argument parsing
     - Project markdown parsing
 
-16. **M15-T17**: Implement project import modes
+16. **M27-T17**: Implement project import modes
     - Create mode
     - Update mode (with matching)
     - Upsert mode
 
-17. **M15-T18**: Implement project dependency resolution
+17. **M27-T18**: Implement project dependency resolution
     - Initiative resolution
     - Lead/member resolution
     - Label resolution
 
-18. **M15-T19**: Add project import validation
+18. **M27-T19**: Add project import validation
     - Validation-only mode
     - Dry-run support
 
-19. **M15-T20**: Project import testing
+19. **M27-T20**: Project import testing
     - Integration tests
     - Error case handling
 
-### Phase 5: Documentation & Polish (M15-T21 through M15-T25)
+### Phase 5: Documentation & Polish (M27-T21 through M27-T25)
 
-20. **M15-T21**: Update README.md
+20. **M27-T21**: Update README.md
     - Export/import documentation
     - Usage examples
     - Workflow guides
 
-21. **M15-T22**: Create integration tests
+21. **M27-T22**: Create integration tests
     - Export → Import round-trip tests
     - Validation tests
     - Error handling tests
 
-22. **M15-T23**: Add to setup wizard
+22. **M27-T23**: Add to setup wizard
     - Mention export/import in tutorial
     - Add to feature showcase
 
-23. **M15-T24**: Performance optimization
+23. **M27-T24**: Performance optimization
     - Batch API calls
     - Parallel file operations
     - Progress indicators
 
-24. **M15-T25**: Final validation
+24. **M27-T25**: Final validation
     - Build and typecheck
     - Lint pass
     - Manual testing
