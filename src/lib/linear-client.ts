@@ -1654,6 +1654,53 @@ export async function createIssueComment(
 }
 
 /**
+ * Create an attachment (external link) on an issue
+ *
+ * @param issueId - Issue UUID
+ * @param url - URL to attach (GitHub PR, Figma, docs, etc.)
+ * @param title - Attachment title
+ * @param subtitle - Optional subtitle
+ * @param iconUrl - Optional icon URL
+ * @returns Created attachment details
+ */
+export async function createIssueAttachment(
+  issueId: string,
+  url: string,
+  title: string,
+  subtitle?: string,
+  iconUrl?: string
+): Promise<{
+  id: string;
+  url: string;
+  title: string;
+}> {
+  const client = getLinearClient();
+
+  const result = await client.createAttachment({
+    issueId,
+    url,
+    title,
+    ...(subtitle && { subtitle }),
+    ...(iconUrl && { iconUrl }),
+  });
+
+  if (!result.success) {
+    throw new LinearClientError('Failed to create attachment');
+  }
+
+  const attachment = await result.attachment;
+  if (!attachment) {
+    throw new LinearClientError('Attachment was created but could not be retrieved');
+  }
+
+  return {
+    id: attachment.id,
+    url: attachment.url,
+    title: attachment.title,
+  };
+}
+
+/**
  * Get issue history (M15.2)
  *
  * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):

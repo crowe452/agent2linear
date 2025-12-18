@@ -72,6 +72,7 @@ import { createIssueCommand } from './commands/issue/create.js';
 import { updateIssueCommand } from './commands/issue/update.js';
 import { registerIssueListCommand } from './commands/issue/list.js';
 import { commentIssue } from './commands/issue/comment.js';
+import { attachToIssue } from './commands/issue/attach.js';
 
 const cli = new Command();
 
@@ -1690,6 +1691,41 @@ Note: Comments support markdown formatting.
 `)
   .action(async (identifier, body, options) => {
     await commentIssue(identifier, body, options);
+  });
+
+issue
+  .command('attach <identifier> <url>')
+  .description('Attach an external link to an issue (GitHub PR, Figma, docs, etc.)')
+  .option('-t, --title <title>', 'Link title (auto-generated from URL if not provided)')
+  .option('-s, --subtitle <subtitle>', 'Link subtitle')
+  .option('--icon <url>', 'Icon URL (20x20px recommended)')
+  .option('-q, --quiet', 'Suppress output (only show errors)')
+  .option('-w, --web', 'Open issue in browser after attaching')
+  .addHelpText('after', `
+Examples:
+  # Attach a GitHub PR (title auto-generated)
+  $ a2l issue attach WIN-105 "https://github.com/org/repo/pull/123"
+
+  # Attach with custom title
+  $ a2l issue attach WIN-105 "https://figma.com/..." --title "Design Mockups"
+
+  # Attach with title and subtitle
+  $ a2l issue attach ENG-123 "https://docs.google.com/..." \\
+      --title "Technical Spec" --subtitle "v2.1 Draft"
+
+  # Attach and open issue in browser
+  $ a2l issue attach WIN-105 "https://github.com/..." --web
+
+Auto-generated titles for common services:
+  - GitHub PRs: "GitHub PR #123"
+  - GitHub Issues: "GitHub Issue #456"
+  - Figma: "Figma Design"
+  - Notion: "Notion Document"
+  - Google Docs: "Google Doc"
+  - Slack: "Slack Message"
+`)
+  .action(async (identifier, url, options) => {
+    await attachToIssue(identifier, url, options);
   });
 
 // Register issue list command (M15.5 Phase 1)
