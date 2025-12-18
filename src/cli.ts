@@ -71,6 +71,7 @@ import { viewIssue } from './commands/issue/view.js';
 import { createIssueCommand } from './commands/issue/create.js';
 import { updateIssueCommand } from './commands/issue/update.js';
 import { registerIssueListCommand } from './commands/issue/list.js';
+import { commentIssue } from './commands/issue/comment.js';
 
 const cli = new Command();
 
@@ -1661,6 +1662,34 @@ Member Resolution:
 `)
   .action(async (identifier, options) => {
     await updateIssueCommand(identifier, options);
+  });
+
+issue
+  .command('comment <identifier> [body]')
+  .description('Add a comment to an issue')
+  .option('--body-file <path>', 'Read comment body from file (mutually exclusive with body argument)')
+  .option('-q, --quiet', 'Suppress output (only show errors)')
+  .option('-w, --web', 'Open issue in browser after commenting')
+  .addHelpText('after', `
+Examples:
+  # Add inline comment
+  $ agent2linear issue comment ENG-123 "This is my comment"
+  $ a2l issue comment WIN-105 "Updated the architecture docs"
+
+  # Add comment from file (useful for longer comments)
+  $ a2l issue comment ENG-123 --body-file notes.md
+  $ a2l issue comment WIN-105 --body-file /tmp/update.md
+
+  # Add comment and open in browser
+  $ a2l issue comment WIN-105 "Done!" --web
+
+  # Quiet mode (for scripting)
+  $ a2l issue comment ENG-123 "Automated update" --quiet
+
+Note: Comments support markdown formatting.
+`)
+  .action(async (identifier, body, options) => {
+    await commentIssue(identifier, body, options);
   });
 
 // Register issue list command (M15.5 Phase 1)

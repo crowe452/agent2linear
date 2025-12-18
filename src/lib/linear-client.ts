@@ -1616,6 +1616,44 @@ export async function getIssueComments(issueId: string): Promise<
 }
 
 /**
+ * Create a comment on an issue
+ *
+ * @param issueId - Issue UUID
+ * @param body - Comment body (markdown supported)
+ * @returns Created comment details
+ */
+export async function createIssueComment(
+  issueId: string,
+  body: string
+): Promise<{
+  id: string;
+  createdAt: string;
+  body: string;
+}> {
+  const client = getLinearClient();
+
+  const result = await client.createComment({
+    issueId,
+    body,
+  });
+
+  if (!result.success) {
+    throw new LinearClientError('Failed to create comment');
+  }
+
+  const comment = await result.comment;
+  if (!comment) {
+    throw new LinearClientError('Comment was created but could not be retrieved');
+  }
+
+  return {
+    id: comment.id,
+    createdAt: comment.createdAt,
+    body: comment.body,
+  };
+}
+
+/**
  * Get issue history (M15.2)
  *
  * PERFORMANCE OPTIMIZATION (v0.24.0-alpha.2.1):
